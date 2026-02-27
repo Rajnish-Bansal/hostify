@@ -15,6 +15,7 @@ const HostDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
+  const [listingFilter, setListingFilter] = useState('All'); // New state for filtering listings
 
   const [selectedListingId, setSelectedListingId] = useState('all');
   const selectedListing = selectedListingId === 'all' ? null : listings.find(l => l.id === selectedListingId);
@@ -530,6 +531,14 @@ const HostDashboard = () => {
     e.target.value = null;
   };
 
+  const filteredListings = listings.filter(listing => {
+    if (listingFilter === 'All') return true;
+    if (listingFilter === 'Active') return listing.status === 'Active';
+    if (listingFilter === 'Inactive') return listing.status === 'Inactive' || listing.status === 'Payment Required';
+    if (listingFilter === 'Pending Approval') return listing.status === 'Pending';
+    return true;
+  });
+
   return (
     <div className="dashboard-layout">
       {/* Sidebar */}
@@ -670,13 +679,27 @@ const HostDashboard = () => {
         )}
 
         {activeTab === 'listings' && (
-           <div className="listings-content">
-              <div className="listings-header-row">
-                 <p>{listings.length} Listings found</p>
-              </div>
-              
-              <div className="listings-grid-v2">
-                     {listings.map(listing => {
+             <div className="listings-content">
+                <div className="listings-header-wrapper">
+                   <div className="listings-header-row">
+                      <p>{filteredListings.length} Listings found</p>
+                   </div>
+                   
+                   <div className="listing-filters-tabs">
+                     {['All', 'Active', 'Inactive', 'Pending Approval'].map(filter => (
+                       <button
+                         key={filter}
+                         className={`filter-tab-pill ${listingFilter === filter ? 'active' : ''}`}
+                         onClick={() => setListingFilter(filter)}
+                       >
+                         {filter}
+                       </button>
+                     ))}
+                   </div>
+                </div>
+                
+                <div className="listings-grid-v2">
+                       {filteredListings.map(listing => {
                         const createdAt = listing.createdAt ? new Date(listing.createdAt) : new Date();
                         const expiryDate = new Date(createdAt);
                         expiryDate.setFullYear(createdAt.getFullYear() + 1);
@@ -782,9 +805,9 @@ const HostDashboard = () => {
                            </div>
                         );
                      })}
-                 {listings.length === 0 && <div className="no-data">No listings yet.</div>}
-              </div>
-           </div>
+                       {filteredListings.length === 0 && <div className="no-data">No listings match the selected filter.</div>}
+                </div>
+             </div>
         )}
 
         {/* Delete Confirmation Modal */}

@@ -243,11 +243,49 @@
 }
 
 /* Listings V2 */
+.listings-header-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
 .listings-header-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+}
+
+.listing-filters-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px; /* For scrollbar */
+}
+
+.filter-tab-pill {
+  background: white;
+  border: 1px solid #ebebeb;
+  padding: 8px 16px;
+  border-radius: 30px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #717171;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.filter-tab-pill:hover {
+  border-color: #222;
+  color: #222;
+}
+
+.filter-tab-pill.active {
+  background: #222;
+  border-color: #222;
+  color: white;
+  font-weight: 600;
 }
 
 .listings-grid-v2 {
