@@ -733,9 +733,9 @@ const HostDashboard = () => {
                                  </div>
                                  
                                  <div className="card-metrics-v2">
-                                    {listing.status === 'Active' && (
-                                      <div className={`expiry-info ${isExpiringSoon ? 'expiring-soon' : ''}`}>
-                                         {isExpiringSoon ? '⚠️ Expiring in ' + diffInDays + ' days' : '⏳ Valid until: ' + expiryDate.toLocaleDateString()}
+                                    {(listing.status === 'Active' || listing.status === 'Payment Required') && (
+                                      <div className={`expiry-info ${isExpiringSoon ? 'expiring-soon' : listing.status === 'Payment Required' ? 'expiring-soon' : ''}`}>
+                                         {listing.status === 'Payment Required' ? '⚠️ Plan expired on: ' + expiryDate.toLocaleDateString() : isExpiringSoon ? '⚠️ Expiring in ' + diffInDays + ' days' : '⏳ Valid until: ' + expiryDate.toLocaleDateString()}
                                       </div>
                                     )}
                                     <div className="metrics-row">
