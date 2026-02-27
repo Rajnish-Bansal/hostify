@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useHost } from '../../context/HostContext';
 import { useAuth } from '../../context/AuthContext';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, addMonths, subMonths, isSameMonth, isSameDay, parseISO, isWithinInterval } from 'date-fns';
@@ -14,8 +14,28 @@ const HostDashboard = () => {
   const { listings, updateListingStatus, loadListingForEdit, deleteListing, resetListingData, extendSubscription } = useHost();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
-  const [listingFilter, setListingFilter] = useState('All'); // New state for filtering listings
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Read from URL, fallback to defaults
+  const activeTab = searchParams.get('tab') || 'overview';
+  const listingFilter = searchParams.get('filter') || 'All';
+
+  // Helper functions to update URL
+  const setActiveTab = (tab) => {
+    setSearchParams(prev => {
+      prev.set('tab', tab);
+      // Optional: Reset filter when switching away from listings tab
+      if (tab !== 'listings') prev.delete('filter');
+      return prev;
+    });
+  };
+
+  const setListingFilter = (filter) => {
+    setSearchParams(prev => {
+      prev.set('filter', filter);
+      return prev;
+    });
+  };
 
   const [selectedListingId, setSelectedListingId] = useState('all');
   const selectedListing = selectedListingId === 'all' ? null : listings.find(l => l.id === selectedListingId);
