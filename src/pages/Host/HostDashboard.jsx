@@ -751,7 +751,14 @@ const HostDashboard = () => {
                                       else if (photo instanceof File) imgUrl = URL.createObjectURL(photo);
                                       else if (photo && photo.url) imgUrl = photo.url;
                                    }
-                                   return <img src={imgUrl} alt={listing.title || 'Listing'} />;
+                                   return <img 
+                                      src={imgUrl} 
+                                      alt={listing.title || 'Listing'} 
+                                      onError={(e) => { 
+                                        e.target.onerror = null; 
+                                        e.target.src = '/placeholder-listing.jpg'; 
+                                      }} 
+                                   />;
                                  })()}
                                  <span className={`status-pill ${listing.status.toLowerCase().replace(' ', '-')}`}>
                                     {listing.status === 'Pending' ? 'Pending Approval' : listing.status} {listing.status === 'Active' ? '(Annual)' : ''}
