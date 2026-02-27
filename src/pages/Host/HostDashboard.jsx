@@ -726,7 +726,7 @@ const HostDashboard = () => {
                                  {listing.photos && listing.photos[0] ? (
                                    <img src={listing.photos[0] instanceof File ? URL.createObjectURL(listing.photos[0]) : listing.photos[0]} alt="" />
                                  ) : (
-                                   <div className="placeholder">No Img</div>
+                                   <img src="/placeholder-listing.jpg" alt="No image available" />
                                  )}
                                  <span className={`status-pill ${listing.status.toLowerCase().replace(' ', '-')}`}>
                                     {listing.status === 'Pending' ? 'Pending Approval' : listing.status} {listing.status === 'Active' ? '(Annual)' : ''}
