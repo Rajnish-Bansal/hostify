@@ -686,15 +686,23 @@ const HostDashboard = () => {
                    </div>
                    
                    <div className="listing-filters-tabs">
-                     {['All', 'Active', 'Inactive', 'Pending Approval'].map(filter => (
-                       <button
-                         key={filter}
-                         className={`filter-tab-pill ${listingFilter === filter ? 'active' : ''}`}
-                         onClick={() => setListingFilter(filter)}
-                       >
-                         {filter}
-                       </button>
-                     ))}
+                     {['All', 'Active', 'Inactive', 'Pending Approval'].map(filter => {
+                       let count = 0;
+                       if (filter === 'All') count = listings.length;
+                       else if (filter === 'Active') count = listings.filter(l => l.status === 'Active').length;
+                       else if (filter === 'Inactive') count = listings.filter(l => l.status === 'Inactive' || l.status === 'Payment Required').length;
+                       else if (filter === 'Pending Approval') count = listings.filter(l => l.status === 'Pending').length;
+
+                       return (
+                         <button
+                           key={filter}
+                           className={`filter-tab-pill ${listingFilter === filter ? 'active' : ''}`}
+                           onClick={() => setListingFilter(filter)}
+                         >
+                           {filter} <span className="tab-count">{count}</span>
+                         </button>
+                       );
+                     })}
                    </div>
                 </div>
                 
