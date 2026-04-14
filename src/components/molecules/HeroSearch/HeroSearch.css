@@ -118,10 +118,24 @@
 }
 
 /* Suggestions & Popovers */
-.search-suggestions, .guest-popover {
+.search-suggestions {
   position: absolute;
   top: calc(100% + 16px);
   left: 0;
+  width: 400px;
+  background: white;
+  border-radius: var(--radius-xl);
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 24px;
+  z-index: 2000;
+  animation: slideInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.guest-popover {
+  position: absolute;
+  top: calc(100% + 16px);
+  right: 0;
   width: 400px;
   background: white;
   border-radius: var(--radius-xl);
