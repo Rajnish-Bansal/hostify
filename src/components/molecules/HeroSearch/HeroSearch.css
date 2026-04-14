@@ -135,7 +135,7 @@
 .guest-popover {
   position: absolute;
   top: calc(100% + 16px);
-  right: 0;
+  right: -100px; /* Centered shift to account for section width and search button */
   width: 400px;
   background: white;
   border-radius: var(--radius-xl);

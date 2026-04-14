@@ -232,7 +232,7 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
                           </button>
                           <span className="guest-count">{guestCounts.adults}</span>
                           <button 
-                            className="guest-btn"
+                            className="guest-btn" 
                             disabled={totalGuests >= 16}
                             onClick={() => updateGuests('adults', 'increase')}
                           >
@@ -257,7 +257,7 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
                           </button>
                           <span className="guest-count">{guestCounts.children}</span>
                           <button 
-                            className="guest-btn"
+                            className="guest-btn" 
                             disabled={totalGuests >= 16}
                             onClick={() => updateGuests('children', 'increase')}
                           >
@@ -268,6 +268,14 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
               </div>
           )}
         </div>
+
+        <button className="hero-search-button" onClick={(e) => {
+            e.stopPropagation();
+            handleSearchClick();
+        }}>
+          <Search size={22} strokeWidth={2.5} color="white" />
+          <span className="search-btn-text">Search</span>
+        </button>
       </div>
     </div>
   );
