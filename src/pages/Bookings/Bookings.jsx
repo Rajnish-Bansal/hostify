@@ -1,21 +1,56 @@
 import React, { useState } from 'react';
 import Navbar from '../../components/organisms/Navbar/Navbar';
 import './Bookings.css';
-import { MapPin, Calendar, Users, Briefcase, MessageSquare, Star } from 'lucide-react';
+import { MapPin, Calendar, Users, Briefcase, MessageSquare, Star, FileText } from 'lucide-react';
 import { useBooking } from '../../context/BookingContext';
 import RatingModal from '../../components/molecules/RatingModal/RatingModal';
+import InvoiceModal from '../../components/molecules/InvoiceModal/InvoiceModal';
 
 const Bookings = () => {
   const [activeTab, setActiveTab] = useState('upcoming');
   const { userBookings } = useBooking();
   const [showRatingModal, setShowRatingModal] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
 
-  // Simple filter for demo purposes. 
-  // In a real app, we'd filter by date vs current date.
-  // For now, we'll just show all in 'upcoming' or assume context has the right data.
+  // Filter logic
   const upcomingBookings = userBookings;
-  const pastBookings = [];
+  
+  // Mock past bookings for demo if none exist
+  const pastBookings = [
+    {
+      id: 'past-101',
+      title: "Himalayan Stone House",
+      location: "Manali, India",
+      dates: "Dec 10 - Dec 15, 2023",
+      guests: "2 guests",
+      price: "₹32,500",
+      nights: 5,
+      status: "Completed",
+      code: "HST-44921",
+      image: "https://images.unsplash.com/photo-1518780664697-55e3ad937233?w=800&auto=format&fit=crop",
+      host: {
+        name: "Rajesh",
+        image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop"
+      }
+    },
+    {
+       id: 'past-102',
+       title: "Beachfront Villa",
+       location: "Goa, India",
+       dates: "Nov 20 - Nov 24, 2023",
+       guests: "4 guests",
+       price: "₹45,000",
+       nights: 4,
+       status: "Completed",
+       code: "BVF-99021",
+       image: "https://images.unsplash.com/photo-1544124499-58912cbddaad?w=800&auto=format&fit=crop",
+       host: {
+         name: "Anya",
+         image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop"
+       }
+     }
+  ];
 
   const bookings = activeTab === 'upcoming' ? upcomingBookings : pastBookings;
 
@@ -24,9 +59,13 @@ const Bookings = () => {
     setShowRatingModal(true);
   };
 
+  const handleViewInvoice = (booking) => {
+    setSelectedBooking(booking);
+    setShowInvoiceModal(true);
+  };
+
   const handleSubmitRating = (ratingData) => {
     console.log('Rating submitted:', ratingData);
-    // In a real app, this would send the rating to the backend
     alert(`Thank you for rating ${ratingData.booking.title}!`);
   };
 
@@ -58,9 +97,11 @@ const Bookings = () => {
                   <div className="booking-image-wrapper">
                     <div className="booking-image" style={{backgroundImage: `url(${booking.image})`}}></div>
                     <div className="image-shine"></div>
-                    <div className={`booking-status-badge ${booking.status === 'Pending Approval' ? 'pending' : 'confirmed'}`}>
+                    <div className={`booking-status-badge ${booking.status === 'Pending Approval' ? 'pending' : booking.status === 'Completed' ? 'completed' : 'confirmed'}`}>
                       {booking.status === 'Pending Approval' ? (
                         <><Calendar size={12} /> Pending Approval</>
+                      ) : booking.status === 'Completed' ? (
+                        <><Star size={12} fill="white" /> Completed</>
                       ) : (
                         <><Star size={12} fill="white" /> Confirmed</>
                       )}
@@ -112,7 +153,7 @@ const Bookings = () => {
                     <div className="booking-footer">
                        <div className="booking-price">
                           <span className="price-label">Paid</span>
-                          <span className="price-value">{booking.price || '₹12,400'}</span>
+                          <span className="price-value">{booking.price}</span>
                        </div>
                        
                        <div className="booking-actions">
@@ -122,15 +163,21 @@ const Bookings = () => {
                                 <MessageSquare size={16} />
                               </button>
                               {booking.status === 'Pending Approval' ? (
-                                 <button className="action-btn-primary" style={{background: '#fff', color: '#666', border: '1px solid #ddd'}}>Cancel</button>
+                                 <button className="action-btn-primary cancel-btn">Cancel</button>
                               ) : (
                                  <button className="action-btn-primary">Manage</button>
                               )}
                             </>
                           ) : (
-                            <button className="action-btn-primary" onClick={() => handleRateStay(booking)}>
-                               Rate Stay
-                            </button>
+                            <div className="past-actions">
+                              <button className="action-btn-secondary invoice-btn" onClick={() => handleViewInvoice(booking)} title="Download Invoice">
+                                 <FileText size={16} />
+                                 <span>Invoice</span>
+                              </button>
+                              <button className="action-btn-primary" onClick={() => handleRateStay(booking)}>
+                                 Rate Stay
+                              </button>
+                            </div>
                           )}
                        </div>
                     </div>
@@ -154,8 +201,17 @@ const Bookings = () => {
           onSubmit={handleSubmitRating}
         />
       )}
+
+      {selectedBooking && (
+        <InvoiceModal
+          isOpen={showInvoiceModal}
+          onClose={() => setShowInvoiceModal(false)}
+          booking={selectedBooking}
+        />
+      )}
     </>
   );
 };
 
 export default Bookings;
+

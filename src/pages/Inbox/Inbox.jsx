@@ -3,10 +3,10 @@ import { Search, Send, Plus, Filter, MoreHorizontal, MessageSquare, ChevronRight
 import io from 'socket.io-client';
 import Navbar from '../../components/organisms/Navbar/Navbar';
 import { useAuth } from '../../context/AuthContext';
-import { fetchConversations, fetchMessages } from '../../services/api'; // Added real API helpers
+import { fetchConversations, fetchMessages, sendMessage } from '../../services/api'; // Added sendMessage API helper
 import './Inbox.css';
 
-const socket = io('http://localhost:5000'); // Ensure this matches your server URL
+const socket = io('http://localhost:5001'); // Match the server port in .env
 
 const Inbox = () => {
   const { user } = useAuth();
@@ -53,9 +53,9 @@ const Inbox = () => {
   useEffect(() => {
     socket.on('receive_message', (data) => {
       // 1. Update messages if in the active conversation
-      if (selectedConversation && (data.conversationId === (selectedConversation._id || selectedConversation.id))) {
+      if (selectedConversation && (data.conversationId === selectedConversation._id)) {
         setMessages(prev => [...prev, {
-          _id: Date.now().toString(),
+          _id: data._id || Date.now().toString(),
           sender: data.senderId,
           text: data.text,
           timestamp: data.timestamp
@@ -64,7 +64,7 @@ const Inbox = () => {
 
       // 2. Update conversation list for last message summary
       setConversations(prev => prev.map(conv => {
-          if ((conv._id || conv.id) === data.conversationId) {
+          if (conv._id === data.conversationId) {
               return { ...conv, lastMessage: data.text, updatedAt: new Date() };
           }
           return conv;
@@ -80,19 +80,23 @@ const Inbox = () => {
 
   useEffect(scrollToBottom, [messages]);
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim() || !selectedConversation) return;
 
-    const messageData = {
-      conversationId: selectedConversation.id,
-      senderId: user?.id || 'me',
-      text: newMessage,
-      timestamp: new Date().toISOString()
-    };
+    const messageText = newMessage;
+    setNewMessage(''); // Optimistically clear input
 
-    socket.emit('send_message', messageData);
-    setNewMessage('');
+    try {
+      console.log('[Inbox] Sending message via API...');
+      await sendMessage(selectedConversation._id, messageText, user?.id || user?._id);
+      // The socket broadcast will handle adding it to the state for us
+    } catch (err) {
+      console.error('[Inbox] Failed to send message:', err);
+      // Fallback: put the text back if it failed
+      setNewMessage(messageText);
+      alert('Failed to send message. Please try again.');
+    }
   };
 
   return (
@@ -133,7 +137,7 @@ const Inbox = () => {
 
           <div className="conversations-list">
             {conversations.map(conv => {
-              const otherParticipant = conv.participants.find(p => p._id !== user?.id) || conv.participants[0];
+              const otherParticipant = conv.participants?.find(p => p._id !== user?.id && p._id !== user?._id) || conv.participants?.[0] || {};
               return (
                 <div 
                   key={conv._id} 
@@ -143,7 +147,7 @@ const Inbox = () => {
                   <div className="user-avatar" style={{ backgroundImage: `url(${otherParticipant.image})` }}></div>
                   <div className="conv-info">
                     <div className="conv-header">
-                      <span className="user-name">{otherParticipant.name}</span>
+                      <span className="user-name">{otherParticipant.name || 'User'}</span>
                       <span className="conv-time">{new Date(conv.updatedAt).toLocaleDateString()}</span>
                     </div>
                     <div className="listing-name">{conv.listing?.title || 'Listing'}</div>
@@ -161,12 +165,12 @@ const Inbox = () => {
             <>
               <div className="chat-header">
                 {(() => {
-                  const otherParticipant = selectedConversation.participants.find(p => p._id !== user?.id) || selectedConversation.participants[0];
+                  const otherParticipant = selectedConversation.participants?.find(p => p._id !== user?.id && p._id !== user?._id) || selectedConversation.participants?.[0] || {};
                   return (
                     <div className="chat-user-info">
                       <div className="user-avatar" style={{ backgroundImage: `url(${otherParticipant.image})` }}></div>
                        <div>
-                        <div className="user-name">{otherParticipant.name}</div>
+                        <div className="user-name">{otherParticipant.name || 'User'}</div>
                         <div className="online-status">Recently active</div>
                        </div>
                     </div>
@@ -188,10 +192,10 @@ const Inbox = () => {
                 </div>
 
                 {messages.map(msg => (
-                  <div key={msg._id || msg.id} className={`message-bubble ${msg.sender === user?.id || msg.senderId === user?.id ? 'sent' : 'received'}`}>
+                  <div key={msg._id || msg.id} className={`message-bubble ${msg.sender === (user?.id || user?._id) || msg.senderId === (user?.id || user?._id) ? 'sent' : 'received'}`}>
                     <div className="bubble-content">
                       <p>{msg.text}</p>
-                      <span className="bubble-time">{new Date(msg.timestamp || msg.createdAt).toLocaleTimeString([], { hour: '2-刻', minute: '2-digit' })}</span>
+                      <span className="bubble-time">{new Date(msg.timestamp || msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                   </div>
                 ))}

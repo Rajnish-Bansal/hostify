@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ChevronLeft, Star, CreditCard, Wallet, Smartphone, ShieldCheck } from 'lucide-react';
+import { ChevronLeft, Star, CreditCard, Wallet, Smartphone, ShieldCheck, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
-import Navbar from '../../components/organisms/Navbar/Navbar';
-import { fetchListingById } from '../../services/api';
-import { useBooking } from '../../context/BookingContext';
+import { fetchListingById, createBooking } from '../../services/api';
+import { useHost } from '../../context/HostContext';
+import { useAuth } from '../../context/AuthContext';
+import AuthModal from '../../components/molecules/AuthModal/AuthModal';
 import './Checkout.css';
 
 const Checkout = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { addBooking } = useBooking();
+  const { listings: hostListings } = useHost();
+  const { user, isAuthModalOpen, openAuthModal, closeAuthModal } = useAuth();
   
   const [listing, setListing] = useState(location.state?.listing || null);
   const [loading, setLoading] = useState(!location.state?.listing);
@@ -21,8 +23,24 @@ const Checkout = () => {
     if (!listing && id) {
       const getListing = async () => {
         try {
+          // Try to find in host listings first (local state/dummy data)
+          const localListing = hostListings.find(l => (l._id || l.id) == id);
+          if (localListing) {
+            setListing({
+              ...localListing,
+              image: localListing.image || (localListing.photos && localListing.photos[0])
+            });
+            setLoading(false);
+            return;
+          }
+
+          // Otherwise fetch from API
           const data = await fetchListingById(id);
-          setListing(data);
+          const normalizedData = {
+            ...data,
+            image: data.image || (data.photos && data.photos[0])
+          };
+          setListing(normalizedData);
         } catch (err) {
           console.error("Failed to fetch listing for checkout:", err);
         } finally {
@@ -31,7 +49,7 @@ const Checkout = () => {
       };
       getListing();
     }
-  }, [id, listing]);
+  }, [id, listing, hostListings]);
 
   const stateData = location.state || {};
   
@@ -53,6 +71,8 @@ const Checkout = () => {
   const guestsLabel = `${totalGuestsCount} guest${totalGuestsCount > 1 ? 's' : ''}`;
 
   const [isProcessing, setIsProcessing] = useState(false);
+  const [bookingError, setBookingError] = useState('');
+  const [confirmedBooking, setConfirmedBooking] = useState(null);
   
   // Coupon State
   const [couponCode, setCouponCode] = useState('');
@@ -91,25 +111,74 @@ const Checkout = () => {
 
   const finalPrice = totalPrice - discount;
 
-  const handleConfirmPay = () => {
+  const handleConfirmPay = async () => {
+    // Require login before finalizing booking
+    if (!user) {
+      openAuthModal();
+      return;
+    }
+
+    if (!listing._id && !listing.id) {
+      setBookingError('Cannot book this listing — missing listing ID.');
+      return;
+    }
+
     setIsProcessing(true);
-    
-    // Simulate network delay
-    setTimeout(() => {
-       const newBooking = {
-          title: listing.title || `Stunning stay in ${listing.location}`,
-          location: listing.location,
-          dates: formattedDates,
-          guests: guestsLabel,
-          price: `₹${finalPrice.toLocaleString('en-IN')}`,
-          image: listing.image,
-          host: listing.host
-       };
-       
-       addBooking(newBooking);
-       navigate('/bookings');
-    }, 1500);
+    setBookingError('');
+
+    try {
+      const result = await createBooking({
+        listingId: listing._id || listing.id,
+        startDate,
+        endDate,
+        guests,
+        totalPrice: finalPrice
+      });
+
+      // Show confirmation
+      setConfirmedBooking(result);
+    } catch (err) {
+      setBookingError(err.message || 'Booking failed. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
+
+  // If booking confirmed, show a success screen
+  if (confirmedBooking) {
+    return (
+      <div className="checkout-container" style={{ maxWidth: 600, margin: '120px auto', textAlign: 'center', padding: '48px 32px' }}>
+        <CheckCircle size={72} color="var(--primary)" style={{ marginBottom: 24 }} />
+        <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 12 }}>Booking Confirmed! 🎉</h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 16, marginBottom: 8 }}>
+          Your stay at <strong>{confirmedBooking.listing?.location || listing.location}</strong> is booked.
+        </p>
+        <div style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-lg)', padding: '20px 32px', margin: '24px 0', display: 'inline-block' }}>
+          <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>Booking Reference</div>
+          <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: 2, color: 'var(--primary)' }}>{confirmedBooking.code}</div>
+        </div>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 32 }}>
+          {confirmedBooking.dates} &nbsp;·&nbsp; {finalPrice.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}
+        </p>
+        <div style={{ display: 'flex', gap: 16, justifyContent: 'center' }}>
+          <button
+            className="confirm-btn"
+            style={{ maxWidth: 200 }}
+            onClick={() => navigate('/bookings')}
+          >
+            View My Trips
+          </button>
+          <button
+            style={{ padding: '16px 32px', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-lg)', fontWeight: 600, cursor: 'pointer' }}
+            onClick={() => navigate('/')}
+          >
+            Back to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
 
   return (
     <>
@@ -219,8 +288,14 @@ const Checkout = () => {
                </div>
                 
                <button className="confirm-btn" onClick={handleConfirmPay} disabled={isProcessing}>
-                  {isProcessing ? 'Processing Transaction...' : 'Confirm and Pay Now'}
+                  {isProcessing ? 'Processing...' : user ? 'Confirm and Pay Now' : 'Log in to Confirm'}
                </button>
+
+               {bookingError && (
+                 <div style={{ color: '#dc2626', fontSize: 14, marginTop: 12, padding: '12px 16px', background: '#fef2f2', borderRadius: 'var(--radius-md)', border: '1px solid #fecaca' }}>
+                   ⚠️ {bookingError}
+                 </div>
+               )}
 
                <div className="secure-checkout">
                   <span style={{ opacity: 0.6 }}>Guaranteed safe & secure checkout</span>
@@ -299,6 +374,18 @@ const Checkout = () => {
             </div>
          </div>
       </div>
+
+      {/* Auth Modal - shown when unauthenticated user tries to confirm booking */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={(userData) => {
+          closeAuthModal();
+          // If login was successful, auto-proceed with booking
+          if (userData) {
+            setTimeout(() => handleConfirmPay(), 300);
+          }
+        }}
+      />
     </>
   );
 };

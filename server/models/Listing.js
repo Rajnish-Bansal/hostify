@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 
 const listingSchema = new mongoose.Schema({
+  hostId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
+  title: { type: String, required: true },
   location: { type: String, required: true },
   distance: { type: String },
   price: { type: Number, required: true },
@@ -52,9 +54,22 @@ const listingSchema = new mongoose.Schema({
   availableTo: { type: Date },
   icalUrl: { type: String, default: '' },
   weekendPrice: { type: Number },
+  priceOverrides: [
+    {
+      date: { type: Date, required: true },
+      price: { type: Number, required: true }
+    }
+  ],
+  blockedDates: [{ type: Date }],
   discounts: {
     weekly: { type: Number, default: 0 },   // Percentage
     monthly: { type: Number, default: 0 }   // Percentage
+  },
+  subscription: {
+    plan: { type: String, enum: ['Starter', 'Pro', 'Elite'], default: 'Starter' },
+    status: { type: String, enum: ['Active', 'Expired', 'Inactive'], default: 'Inactive' },
+    expiryDate: { type: Date },
+    autoRenew: { type: Boolean, default: true }
   }
 }, { timestamps: true });
 

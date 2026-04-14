@@ -1,0 +1,218 @@
+.pricing-container {
+  padding: 0;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.pricing-header {
+  text-align: center;
+  margin-bottom: 60px;
+  animation: fadeInDown 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sparkle-icon {
+  color: var(--primary);
+  margin-bottom: 16px;
+  width: 48px;
+  height: 48px;
+}
+
+.pricing-title {
+  font-size: 48px;
+  font-weight: 800;
+  letter-spacing: -2px;
+  margin-bottom: 16px;
+  color: var(--secondary);
+}
+
+.pricing-subtitle {
+  font-size: 20px;
+  color: var(--text-secondary);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.plans-grid {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  margin-bottom: 24px;
+}
+
+.plan-card {
+  max-width: 360px;
+  width: 100%;
+  background: white;
+  border-radius: 20px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  border: 1px solid var(--border-light);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.plan-card:hover {
+  transform: translateY(-12px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary);
+}
+
+.plan-card.current {
+  border: 2px solid var(--primary);
+  background: var(--primary-soft);
+}
+
+.current-badge {
+  position: absolute;
+  top: 24px;
+  right: -30px;
+  background: var(--primary);
+  color: white;
+  padding: 8px 40px;
+  font-size: 12px;
+  font-weight: 700;
+  transform: rotate(45deg);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.plan-icon {
+  margin-bottom: 4px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pro .plan-icon { background: #eff6ff; color: #3b82f6; }
+.elite .plan-icon { background: #faf5ff; color: #a855f7; }
+
+.plan-name {
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.plan-price {
+  margin-bottom: 12px;
+  display: flex;
+  align-items: baseline;
+}
+
+.currency { font-size: 18px; font-weight: 600; margin-right: 4px; }
+.amount { font-size: 32px; font-weight: 800; }
+.period { font-size: 14px; color: var(--text-secondary); margin-left: 4px; }
+
+.plan-limits {
+  background: rgba(0,0,0,0.03);
+  padding: 8px 12px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.limit-item {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.limit-item strong {
+  font-weight: 700;
+  color: var(--secondary);
+}
+
+.plan-features {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px 0;
+  flex-grow: 1;
+}
+
+.plan-features li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.plan-features li svg {
+  color: #10b981;
+  flex-shrink: 0;
+}
+
+.plan-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  transition: all 0.2s;
+  background: var(--secondary);
+  color: white;
+}
+
+.plan-btn:hover:not(:disabled) {
+  transform: scale(1.02);
+  filter: brightness(1.1);
+}
+
+.btn-current {
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: default;
+}
+
+.pricing-loading {
+  height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: var(--text-secondary);
+}
+
+.message-banner {
+  padding: 16px 24px;
+  border-radius: 16px;
+  margin-bottom: 32px;
+  font-weight: 600;
+  text-align: center;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.message-banner.success { background: #ecfdf5; color: #065f46; border: 1px solid #10b981; }
+.message-banner.error { background: #fef2f2; color: #991b1b; border: 1px solid #ef4444; }
+
+.pricing-footer {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.pricing-footer a {
+  color: var(--primary);
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}

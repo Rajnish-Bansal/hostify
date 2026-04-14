@@ -60,6 +60,14 @@ export const fetchListingById = async (id) => {
   return response.json();
 };
 
+export const fetchMyListings = async () => {
+  const response = await fetch(`${API_URL}/listings/mine`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Failed to fetch your listings');
+  return response.json();
+};
+
 export const searchListings = async (params) => {
   const query = new URLSearchParams(params).toString();
   const response = await fetch(`${API_URL}/search?${query}`, {
@@ -106,6 +114,27 @@ export const fetchHostAnalytics = async () => {
   return response.json();
 };
 
+export const fetchUserProfile = async () => {
+  const response = await fetch(`${API_URL}/users/profile`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Failed to fetch user profile');
+  return response.json();
+};
+
+export const updateUserProfile = async (profileData) => {
+  const response = await fetch(`${API_URL}/users/profile`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify(profileData)
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Failed to update profile');
+  }
+  return response.json();
+};
+
 // --- Messaging & Conversations ---
 export const fetchConversations = async () => {
     const response = await fetch(`${API_URL}/conversations`, {
@@ -120,6 +149,16 @@ export const fetchMessages = async (conversationId) => {
         headers: getHeaders()
     });
     if (!response.ok) throw new Error('Failed to fetch messages');
+    return response.json();
+};
+
+export const sendMessage = async (conversationId, text, senderId) => {
+    const response = await fetch(`${API_URL}/conversations/${conversationId}/messages`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ text, senderId })
+    });
+    if (!response.ok) throw new Error('Failed to send message');
     return response.json();
 };
 
@@ -142,3 +181,79 @@ export const updateListingPricing = async (listingId, pricingData) => {
     if (!response.ok) throw new Error('Failed to update pricing');
     return response.json();
 };
+
+// --- Bookings ---
+export const createBooking = async (bookingData) => {
+  const response = await fetch(`${API_URL}/bookings`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(bookingData)
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Booking failed');
+  return data;
+};
+
+export const fetchMyTrips = async () => {
+  const response = await fetch(`${API_URL}/bookings/my-trips`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Failed to fetch trips');
+  return response.json();
+};
+
+export const fetchHostBookings = async () => {
+  const response = await fetch(`${API_URL}/bookings/my-listings`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Failed to fetch host bookings');
+  return response.json();
+};
+
+export const updateBookingStatus = async (bookingId, status) => {
+  const response = await fetch(`${API_URL}/bookings/${bookingId}/status`, {
+    method: 'PATCH',
+    headers: getHeaders(),
+    body: JSON.stringify({ status })
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Failed to update booking');
+  return data;
+};
+
+// --- Transactions ---
+export const fetchTransactions = async () => {
+    const response = await fetch(`${API_URL}/transactions`, {
+        headers: getHeaders()
+    });
+    if (!response.ok) throw new Error('Failed to fetch transaction history');
+    return response.json();
+};
+
+// --- Subscriptions ---
+export const fetchPlans = async () => {
+  const response = await fetch(`${API_URL}/subscriptions/plans`);
+  if (!response.ok) throw new Error('Failed to fetch subscription plans');
+  return response.json();
+};
+
+export const fetchSubscriptionStatus = async (listingId) => {
+  const response = await fetch(`${API_URL}/subscriptions/current/${listingId}`, {
+    headers: getHeaders()
+  });
+  if (!response.ok) throw new Error('Failed to fetch subscription status');
+  return response.json();
+};
+
+export const subscribeToPlan = async (planId, listingId) => {
+  const response = await fetch(`${API_URL}/subscriptions/subscribe`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ planId, listingId })
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Subscription failed');
+  return data;
+};
+
+

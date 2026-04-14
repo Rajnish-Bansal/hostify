@@ -1,19 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import io from 'socket.io-client';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useHost } from '../../context/HostContext';
 import { useAuth } from '../../context/AuthContext';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, addMonths, subMonths, isSameMonth, isSameDay, parseISO, isWithinInterval } from 'date-fns';
-import { ChevronLeft, ChevronRight, Download, Trash2, Camera, Upload, Link2, Star, Eye, DollarSign, Calendar, TrendingUp, IndianRupee, Info, MessageSquare, CreditCard, ShieldCheck, Wallet } from 'lucide-react';
+import { User as UserIcon, ChevronLeft, ChevronRight, Download, Trash2, Camera, Upload, Link2, Star, Eye, DollarSign, Calendar, TrendingUp, IndianRupee, Info, MessageSquare, CreditCard, ShieldCheck, Wallet, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import './HostDashboard.css';
 import { generateICalData } from '../../utils/icalGenerator';
 import ConfirmationModal from '../../components/molecules/ConfirmationModal/ConfirmationModal';
 import SubscriptionModal from '../../components/molecules/SubscriptionModal/SubscriptionModal';
 import LimitManagementModal from '../../components/molecules/LimitManagementModal/LimitManagementModal';
 import PricingModal from '../../components/molecules/PricingModal/PricingModal';
-import { fetchPayoutStats, fetchHostAnalytics, updateListingPricing } from '../../services/api';
+import Pricing from './Pricing';
+import { fetchPayoutStats, fetchHostAnalytics, updateListingPricing, fetchHostBookings, updateBookingStatus, fetchConversations, fetchMessages, startConversation, sendMessage, fetchUserProfile, updateUserProfile, uploadImage, fetchTransactions } from '../../services/api';
+
+const socket = io('http://localhost:5001'); // Match the server port in .env
 
 const HostDashboard = () => {
-  const { listings, updateListingStatus, loadListingForEdit, deleteListing, resetListingData, activateUnits } = useHost();
+  const { listings, updateListingStatus, loadListingForEdit, deleteListing, resetListingData, activateUnits, refreshListings } = useHost();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -28,23 +32,26 @@ const HostDashboard = () => {
 
   // Helper functions to update URL
   const setActiveTab = (tab) => {
-    setSearchParams(prev => {
-      prev.set('tab', tab);
-      // Optional: Reset filter when switching away from listings tab
-      if (tab !== 'listings') prev.delete('filter');
-      return prev;
-    });
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('tab', tab);
+    // Optional: Reset filter when switching away from listings tab
+    if (tab !== 'listings') newParams.delete('filter');
+    setSearchParams(newParams);
   };
 
   const setListingFilter = (filter) => {
-    setSearchParams(prev => {
-      prev.set('filter', filter);
-      return prev;
-    });
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('filter', filter);
+    setSearchParams(newParams);
   };
 
   const [selectedListingId, setSelectedListingId] = useState('all');
-  const selectedListing = selectedListingId === 'all' ? null : listings.find(l => l.id === selectedListingId);
+  const selectedListing = selectedListingId === 'all' ? null : listings.find(l => l.id === selectedListingId || l._id === selectedListingId);
+
+  // Pricing Selection State
+  const [pricingRange, setPricingRange] = useState({ start: null, end: null });
+  const [isPricingDrawerOpen, setIsPricingDrawerOpen] = useState(false);
+  const [pendingPrice, setPendingPrice] = useState('');
 
   // Unsaved Changes State for Calendar
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -53,17 +60,29 @@ const HostDashboard = () => {
      setHasUnsavedChanges(true);
   };
 
+  const handleBlockSelection = () => {
+     if (selectedListingId === 'all') {
+        showStatus("Selection Required", "Please select a specific listing to block dates for.");
+        return;
+     }
+   }
+
+  const handleSaveDraft = () => {
+     // Save draft logic...
+     showStatus("Success", "Changes saved successfully!");
+   };
+
   const handleSaveChanges = () => {
      // In a real app, this would trigger an API call to save all modified dates
      setHasUnsavedChanges(false);
      
      if (selectedDatesToBlock.length > 0) {
         if (selectedListingId === 'all') {
-           alert("Please select a specific listing to block dates for.");
+           showStatus("Selection Required", "Please select a specific listing to block dates for.");
            return;
         }
 
-         const activeLimit = selectedListing ? getListingLimit(selectedListing.id) : 1;
+         const activeLimit = selectedListingId === "all" ? listings.reduce((sum, l) => sum + (l.unitCount || 1), 0) : (selectedListing ? (selectedListing.unitCount || 1) : 1);
 
          // Double Booking Check based on unit count
          const hasConflict = selectedDatesToBlock.some(dateStr => {
@@ -86,27 +105,55 @@ const HostDashboard = () => {
          });
 
          if (hasConflict) {
-            alert("Double Booking Prevented: One or more of the selected dates already have a guest reservation. Please deselect them and try again.");
+            showStatus("Double Booking Prevented", "One or more of the selected dates already have a guest reservation. Please deselect them and try again.");
             return;
          }
 
-        const newBlocks = selectedDatesToBlock.map((dateStr, i) => ({
-           id: Date.now() + i,
-           listingId: Number(selectedListingId),
-           guest: 'Unavailable',
-           dates: format(new Date(dateStr), 'MMM dd'),
-           startDate: dateStr,
-           endDate: dateStr,
-           price: '-',
-           status: 'Unavailable'
-        }));
+         // Persistence logic
+         const isMockId = String(selectedListingId).length < 12 || !selectedListingId.toString().match(/^[0-9a-fA-F]{24}$/);
 
-        setReservations(prev => [...prev, ...newBlocks]);
-        setIsBlockingMode(false);
-        setSelectedDatesToBlock([]);
+         const saveBlocksToBackend = async () => {
+           if (isMockId) {
+             // For demo/mock listings, only update local state (already done by handleSaveChanges logic below if we had any)
+             // We'll just populate the reservations for immediate feedback
+             const newLocalBlocks = selectedDatesToBlock.map((dateStr, i) => ({
+                id: `mock-block-${Date.now()}-${i}`,
+                listingId: selectedListingId,
+                startDate: dateStr,
+                endDate: dateStr,
+                status: 'Unavailable'
+             }));
+             setReservations(prev => [...prev, ...newLocalBlocks]);
+             showStatus("Success (Demo)", "Dates marked locally. (Login with a real account to save to database)");
+             return;
+           }
+
+           try {
+             const response = await fetch(`/api/listings/${selectedListingId}/blocked-dates`, {
+               method: 'PUT',
+               headers: {
+                 'Content-Type': 'application/json',
+                 'Authorization': `Bearer ${localStorage.getItem('hostify_token')}`
+               },
+               body: JSON.stringify({ dates: selectedDatesToBlock })
+             });
+             
+             if (!response.ok) throw new Error("Failed to save blocked dates");
+             
+             if (refreshListings) await refreshListings();
+             showStatus("Success", "Dates marked as unavailable successfully.");
+           } catch (err) {
+             console.error("Error saving blocks:", err);
+             showStatus("Persistence Error", "Could not save blocked dates to the server.");
+           }
+         };
+
+         saveBlocksToBackend();
+         setIsBlockingMode(false);
+         setSelectedDatesToBlock([]);
      }
 
-     alert("Changes saved successfully!");
+     handleSaveDraft();
   };
 
   const handleCancelChanges = () => {
@@ -116,9 +163,16 @@ const HostDashboard = () => {
      setSelectedDatesToBlock([]);
   };
 
-  // Delete Modal State
+  // Confirmation Modals State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [listingToDelete, setListingToDelete] = useState(null);
+  const [isUnblockModalOpen, setIsUnblockModalOpen] = useState(false);
+  const [blockToUnblock, setBlockToUnblock] = useState(null);
+  const [isCalendarUnblockModalOpen, setIsCalendarUnblockModalOpen] = useState(false);
+  const [pendingUnblockDates, setPendingUnblockDates] = useState([]);
+  const [isDiscardModalOpen, setIsDiscardModalOpen] = useState(false);
+  const [isPricingConfirmOpen, setIsPricingConfirmOpen] = useState(false);
+  const [pendingPricing, setPendingPricing] = useState(null);
 
   const handleDeleteClick = (id) => {
     setListingToDelete(id);
@@ -130,6 +184,7 @@ const HostDashboard = () => {
       deleteListing(listingToDelete);
       setIsDeleteModalOpen(false);
       setListingToDelete(null);
+      showStatus("Deleted", "Listing has been successfully removed.");
     }
   };
 
@@ -138,37 +193,141 @@ const HostDashboard = () => {
     setListingToDelete(null);
   };
 
+  const handleRemoveBlockClick = (resId) => {
+    setBlockToUnblock(resId);
+    setIsUnblockModalOpen(true);
+  };
+
+  const confirmUnblock = () => {
+    handleRemoveBlock(blockToUnblock);
+    setIsUnblockModalOpen(false);
+    setBlockToUnblock(null);
+  };
+
+  const handleDiscardClick = () => {
+    setIsDiscardModalOpen(true);
+  };
+
+  const confirmDiscard = () => {
+    handleCancelChanges();
+    setIsDiscardModalOpen(false);
+  };
+
   // Subscription Modal State
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
   const [listingToSubscribe, setListingToSubscribe] = useState(null);
-  
   // Pricing Modal State
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const [listingToPrice, setListingToPrice] = useState(null);
+
+  // Status Modal State (Replaces alert)
+  const [statusModal, setStatusModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
+
+  const showStatus = (title, message, onConfirm = null) => {
+    setStatusModal({ isOpen: true, title, message, onConfirm });
+  };
+
+  const closeStatus = () => {
+    if (statusModal.onConfirm) statusModal.onConfirm();
+    setStatusModal({ ...statusModal, isOpen: false });
+  };
 
   // Limit Manager State
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
   
   // Inventory Management State (now driven by listing.activeSubscriptionUnits from HostContext)
   
-  // Messages State
-  const [mockMessages, setMockMessages] = useState([
-    { id: 1, guest: 'Alice Johnson', text: 'Hi, is early check-in possible?', time: '10:00 AM', isHost: false },
-    { id: 2, guest: 'Charlie Brown', text: 'Thank you for the wonderful stay!', time: 'Yesterday', isHost: false },
-  ]);
-  const [activeMessageGuest, setActiveMessageGuest] = useState('Alice Johnson');
+  // Real Messaging State
+  const [conversations, setConversations] = useState([]);
+  const [selectedConversation, setSelectedConversation] = useState(null);
+  const [messages, setMessages] = useState([]);
   const [newMessageText, setNewMessageText] = useState('');
+  const [loadingConversations, setLoadingConversations] = useState(true);
+  const chatEndRef = useRef(null);
 
-  const handleSendMessage = () => {
-    if (!newMessageText.trim()) return;
-    setMockMessages(prev => [...prev, {
-      id: Date.now(),
-      guest: activeMessageGuest,
-      text: newMessageText,
-      time: 'Just now',
-      isHost: true
-    }]);
-    setNewMessageText('');
+  // Fetch conversations on load
+  useEffect(() => {
+    const loadConversations = async () => {
+      if (!user) return;
+      try {
+        setLoadingConversations(true);
+        const data = await fetchConversations();
+        setConversations(data);
+        if (data.length > 0 && !selectedConversation) {
+          setSelectedConversation(data[0]);
+        }
+      } catch (err) {
+        console.error('Failed to load conversations:', err);
+      } finally {
+        setLoadingConversations(false);
+      }
+    };
+    if (activeTab === 'messages') loadConversations();
+  }, [user, activeTab]);
+
+  // Fetch messages when a conversation is selected
+  useEffect(() => {
+    const loadMessages = async () => {
+      if (!selectedConversation) return;
+      try {
+        const data = await fetchMessages(selectedConversation._id || selectedConversation.id);
+        setMessages(data);
+        socket.emit('join_conversation', selectedConversation._id || selectedConversation.id);
+      } catch (err) {
+        console.error('Failed to load messages:', err);
+      }
+    };
+    loadMessages();
+  }, [selectedConversation]);
+
+  // Socket Listener
+  useEffect(() => {
+    const handlePrivateMessage = (data) => {
+      if (selectedConversation && (data.conversationId === (selectedConversation._id || selectedConversation.id))) {
+        setMessages(prev => [...prev, {
+          _id: Date.now().toString(),
+          sender: data.senderId,
+          text: data.text,
+          timestamp: data.timestamp
+        }]);
+      }
+      
+      setConversations(prev => prev.map(conv => {
+          if ((conv._id || conv.id) === data.conversationId) {
+              return { ...conv, lastMessage: data.text, updatedAt: new Date() };
+          }
+          return conv;
+      }));
+    };
+
+    socket.on('receive_message', handlePrivateMessage);
+    return () => socket.off('receive_message', handlePrivateMessage);
+  }, [selectedConversation]);
+
+  // Scroll to bottom
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSendMessage = async () => {
+    if (!newMessageText.trim() || !selectedConversation) return;
+
+    const messageText = newMessageText;
+    setNewMessageText(''); // Clear input optimistically
+
+    try {
+      console.log('[HostDashboard] Sending message via API...');
+      await sendMessage(
+        selectedConversation._id || selectedConversation.id, 
+        messageText, 
+        user?.id || user?._id
+      );
+      // The socket broadcast (receive_message) will add it to the messages state
+    } catch (err) {
+      console.error('[HostDashboard] Failed to send message:', err);
+      setNewMessageText(messageText); // Restore input on failure
+      alert('Failed to send message. Please try again.');
+    }
   };
 
   // iCal Automated Sync State
@@ -178,7 +337,7 @@ const HostDashboard = () => {
 
   const handleMockAutoSync = (url) => {
     if (selectedListingId === 'all') {
-      alert("Please select a specific listing to enable auto-sync.");
+      showStatus("Selection Required", "Please select a specific listing to enable auto-sync.");
       return;
     }
 
@@ -202,9 +361,9 @@ const HostDashboard = () => {
 
     setReservations(prev => [...prev, ...newBlocks]);
     try {
-      alert(`Successfully synced events from ${new URL(url).hostname}. Added 3 blocked dates.`);
+      showStatus("Sync Success", `Successfully synced events from ${new URL(url).hostname}. Added 3 blocked dates.`);
     } catch {
-      alert(`Successfully synced events from external calendar. Added 3 blocked dates.`);
+      showStatus("Sync Success", `Successfully synced events from external calendar. Added 3 blocked dates.`);
     }
   };
 
@@ -234,15 +393,83 @@ const HostDashboard = () => {
      }
   };
 
-  const handlePaymentSuccess = (data) => {
-     if (listingToSubscribe) {
-         // data = { unitsActivated: number, finalPrice: number }
-         activateUnits(listingToSubscribe.id, data.unitsActivated);
-         alert(`Success! You have activated ${data.unitsActivated} unit(s) for ${listingToSubscribe.title}.`);
-     }
-     
+  const handleDownloadInvoice = (tx) => {
+    // Generate a beautiful, printable invoice natively via DOM bridging
+    const invoiceWindow = window.open('', '_blank');
+    invoiceWindow.document.write(`
+      <html>
+        <head>
+          <title>Invoice - ${tx.metadata?.propertyName || 'Transaction'}</title>
+          <style>
+            body { font-family: system-ui, -apple-system, sans-serif; padding: 40px; color: #111827; }
+            .header { border-bottom: 2px solid #f3f4f6; padding-bottom: 24px; margin-bottom: 32px; display: flex; justify-content: space-between; align-items: flex-start; }
+            .logo { font-size: 28px; font-weight: 800; color: #db2777; letter-spacing: -0.5px; }
+            .brand-name { font-size: 14px; font-weight: 500; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+            .meta { color: #4b5563; margin-top: 8px; font-size: 14px; }
+            .customer-details { margin-bottom: 40px; padding: 24px; background: #f9fafb; border-radius: 12px; }
+            .line-items { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            .line-items th { text-transform: uppercase; font-size: 12px; font-weight: 600; color: #6b7280; border-bottom: 2px solid #e5e7eb; }
+            .line-items th, .line-items td { padding: 16px 8px; text-align: left; }
+            .line-items td { border-bottom: 1px solid #f3f4f6; font-size: 15px; }
+            .total-row { font-weight: bold; font-size: 18px; color: #111827; }
+            .paid-stamp { color: #10b981; font-weight: 700; border: 2px solid #10b981; padding: 4px 12px; border-radius: 6px; display: inline-block; transform: rotate(-5deg); margin-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+             <div>
+                 <div class="logo">Hostify</div>
+                 <div class="brand-name">Platform Services</div>
+             </div>
+             <div style="text-align: right;">
+                 <h2 style="margin: 0; font-size: 24px; color: #111827;">TAX INVOICE</h2>
+                 <div class="meta">Date: ${new Date(tx.createdAt || tx.date).toLocaleDateString()}</div>
+                 <div class="meta" style="font-family: monospace;">TXN: ${tx._id || tx.id}</div>
+             </div>
+          </div>
+          
+          <div class="customer-details">
+             <div style="font-size: 12px; color: #6b7280; text-transform: uppercase; font-weight: 600; margin-bottom: 8px;">Billed To</div>
+             <div style="font-weight: 600; font-size: 16px;">${user?.name || 'Valued Host'}</div>
+             <div style="color: #4b5563; margin-top: 4px;">Host ID: ${user?.id || user?._id || 'N/A'}</div>
+          </div>
+
+          <table class="line-items">
+             <tr>
+               <th style="width: 70%;">Description</th>
+               <th style="text-align: right;">Amount</th>
+             </tr>
+             <tr>
+               <td>
+                  <div style="font-weight: 600;">${tx.description || tx.category}</div>
+                  <div style="font-size: 13px; color: #6b7280; margin-top: 4px;">Property: ${tx.metadata?.propertyName || tx.listingId?.title || 'Platform Subscription'}</div>
+               </td>
+               <td style="text-align: right; font-variant-numeric: tabular-nums;">₹${Math.abs(tx.amount || tx.netAmount || 0).toLocaleString('en-IN')}</td>
+             </tr>
+             <tr class="total-row">
+               <td style="text-align: right; border-bottom: none; padding-top: 24px;">Total Paid</td>
+               <td style="text-align: right; border-bottom: none; padding-top: 24px; font-variant-numeric: tabular-nums;">₹${Math.abs(tx.amount || tx.netAmount || 0).toLocaleString('en-IN')}</td>
+             </tr>
+          </table>
+          <div style="text-align: right;">
+             <div class="paid-stamp">COMPLETED ✓</div>
+          </div>
+          
+          <p style="margin-top: 80px; text-align: center; color: #9ca3af; font-size: 12px;">This is a computer generated invoice and does not require a physical signature.</p>
+        </body>
+      </html>
+    `);
+    invoiceWindow.document.close();
+    setTimeout(() => {
+      invoiceWindow.print();
+    }, 800);
+  };
+
+  const handlePaymentSuccess = () => {
+     refreshListings();
      setIsSubModalOpen(false);
      setListingToSubscribe(null);
+     showStatus("Success", "Subscription activated successfully!");
   };
 
   const handleEdit = (listing) => {
@@ -255,11 +482,23 @@ const HostDashboard = () => {
     setIsPricingModalOpen(true);
   };
 
-  const handleUpdatePricing = async (listingId, pricingData) => {
-    const updatedListing = await updateListingPricing(listingId, pricingData);
-    // Ideally update local listings state or context here
-    alert("Pricing updated successfully!");
-    window.location.reload(); // Quick way to sync for now
+  const handleUpdatePricing = (listingId, pricingData) => {
+    setPendingPricing({ listingId, pricingData });
+    setIsPricingConfirmOpen(true);
+  };
+
+  const confirmUpdatePricing = async () => {
+    if (!pendingPricing) return;
+    const { listingId, pricingData } = pendingPricing;
+    
+    try {
+      await updateListingPricing(listingId, pricingData);
+      setIsPricingConfirmOpen(false);
+      setPendingPricing(null);
+      showStatus("Success", "Pricing updated successfully!", () => window.location.reload());
+    } catch (err) {
+      showStatus("Error", "Failed to update pricing: " + err.message);
+    }
   };
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -269,22 +508,70 @@ const HostDashboard = () => {
 
   // Profile State
   const [profile, setProfile] = useState({
-    name: user?.name || 'Host User',
-    email: user?.email || 'host@example.com',
-    phone: '+91 98765 43210',
-    bio: 'Superhost since 2023. I love hosting travelers from around the world!',
-    avatar: null 
+    name: user?.name || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    bio: '',
+    avatar: user?.avatar || null 
   });
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        setLoadingProfile(true);
+        const data = await fetchUserProfile();
+        setProfile({
+           name: data.name || '',
+           email: data.email || '',
+           phone: data.phone || '',
+           bio: data.bio || '',
+           avatar: data.avatar || null
+        });
+      } catch (err) {
+        console.error("Error loading profile:", err);
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+    if (activeTab === 'profile') loadProfile();
+  }, [activeTab]);
 
   const handleProfileUpdate = (e) => {
     const { name, value } = e.target;
     setProfile(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleAvatarChange = (e) => {
+  const handleSaveProfile = async () => {
+    try {
+      setIsSavingProfile(true);
+      const updated = await updateUserProfile({
+        name: profile.name,
+        bio: profile.bio,
+        phone: profile.phone,
+        avatar: profile.avatar
+      });
+      setProfile(updated);
+      showStatus("Profile Updated", "Your profile changes have been saved successfully.");
+    } catch (err) {
+      showStatus("Update Failed", err.message);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleAvatarChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      setProfile(prev => ({ ...prev, avatar: URL.createObjectURL(file) }));
+      try {
+        const { imageUrl } = await uploadImage(file);
+        setProfile(prev => ({ ...prev, avatar: imageUrl }));
+        // Automatically save to profile
+        await updateUserProfile({ avatar: imageUrl });
+      } catch (err) {
+        showStatus("Upload Error", "Failed to upload profile picture.");
+      }
     }
   };
 
@@ -349,8 +636,15 @@ const HostDashboard = () => {
   React.useEffect(() => {
     const getPayoutStats = async () => {
       try {
-        const data = await fetchPayoutStats();
-        setPayoutData(data);
+        setLoadingPayouts(true);
+        const [stats, txns] = await Promise.all([
+          fetchPayoutStats(),
+          fetchTransactions()
+        ]);
+        setPayoutData({
+          ...stats,
+          transactions: txns // Replace/Merge with real transactions from DB
+        });
       } catch (err) {
         console.error("Failed to fetch payout stats:", err);
       } finally {
@@ -387,24 +681,62 @@ const HostDashboard = () => {
     rating: 4.8
   };
 
-  // Mock Reservations with listingId (Now stateful so we can add blocks)
+  // Reservations state — starts with mocks, replaced by real API data
   const [reservations, setReservations] = useState([
     { id: 1, listingId: 1700001, guest: 'Alice Johnson', dates: 'Oct 12 - 15', startDate: '2025-10-12', endDate: '2025-10-15', price: '₹12,400', status: 'Confirmed', img: 'https://i.pravatar.cc/150?u=alice', rating: 4.9 },
     { id: 2, listingId: 1700001, guest: 'Bob Smith', dates: 'Nov 02 - 05', startDate: '2025-11-02', endDate: '2025-11-05', price: '₹8,200', status: 'Pending', img: 'https://i.pravatar.cc/150?u=bob', rating: 4.5 },
     { id: 3, listingId: 1700002, guest: 'Charlie Brown', dates: 'Feb 10 - 14', startDate: '2026-02-10', endDate: '2026-02-14', price: '₹34,000', status: 'Confirmed', img: 'https://i.pravatar.cc/150?u=charlie', rating: 5.0 },
-    { id: 4, listingId: 1700003, guest: 'David Lee', dates: 'Feb 12 - 15', startDate: '2026-02-12', endDate: '2026-02-15', price: '₹30,000', status: 'Confirmed', img: 'https://i.pravatar.cc/150?u=david', rating: 4.2 },
-    // Mock high-volume overlapping bookings
-    { id: 5, listingId: 1700001, guest: 'Eve A', dates: 'Mar 10 - 12', startDate: '2026-03-10', endDate: '2026-03-12', price: '₹4,000', status: 'Confirmed', img: 'https://i.pravatar.cc/150?u=5', rating: 4.8 },
-    { id: 6, listingId: 1700002, guest: 'Frank B', dates: 'Mar 10 - 12', startDate: '2026-03-10', endDate: '2026-03-12', price: '₹5,000', status: 'Confirmed', img: 'https://i.pravatar.cc/150?u=6', rating: 4.7 },
-    { id: 7, listingId: 1700003, guest: 'Grace C', dates: 'Mar 10 - 12', startDate: '2026-03-10', endDate: '2026-03-12', price: '₹6,000', status: 'Confirmed', img: 'https://i.pravatar.cc/150?u=7', rating: 4.9 },
-    { id: 8, listingId: 1700001, guest: 'Heidi D', dates: 'Mar 10 - 12', startDate: '2026-03-10', endDate: '2026-03-12', price: '₹4,000', status: 'Confirmed', img: 'https://i.pravatar.cc/150?u=8', rating: 5.0 },
-    { id: 9, listingId: 1700002, guest: 'Ivan E', dates: 'Mar 10 - 12', startDate: '2026-03-10', endDate: '2026-03-12', price: '₹5,000', status: 'Confirmed', img: 'https://i.pravatar.cc/150?u=9', rating: 4.6 },
-    { id: 10, listingId: 1700003, guest: 'Judy F', dates: 'Mar 10 - 12', startDate: '2026-03-10', endDate: '2026-03-12', price: '₹6,000', status: 'Confirmed', img: 'https://i.pravatar.cc/150?u=10', rating: 4.9 },
-    { id: 11, listingId: 1700001, guest: 'Kevin G', dates: 'Mar 10 - 12', startDate: '2026-03-10', endDate: '2026-03-12', price: '₹4,000', status: 'Confirmed', img: 'https://i.pravatar.cc/150?u=11', rating: 4.8 },
-    { id: 12, listingId: 1700002, guest: 'Liam H', dates: 'Mar 10 - 12', startDate: '2026-03-10', endDate: '2026-03-12', price: '₹5,000', status: 'Confirmed', img: 'https://i.pravatar.cc/150?u=12' },
-    { id: 13, listingId: 1700003, guest: 'Mia I', dates: 'Mar 10 - 12', startDate: '2026-03-10', endDate: '2026-03-12', price: '₹6,000', status: 'Confirmed', img: 'https://i.pravatar.cc/150?u=13' },
-    { id: 14, listingId: 1700001, guest: 'Noah J', dates: 'Mar 10 - 12', startDate: '2026-03-10', endDate: '2026-03-12', price: '₹4,000', status: 'Confirmed', img: 'https://i.pravatar.cc/150?u=14' },
   ]);
+  const [loadingReservations, setLoadingReservations] = useState(true);
+
+  // Fetch real bookings from backend
+  React.useEffect(() => {
+    const getHostBookings = async () => {
+      try {
+        const data = await fetchHostBookings();
+        if (data && data.length > 0) {
+          // Map API bookings to the same shape used by the dashboard
+          const mapped = data.map(b => ({
+            id: b._id,
+            listingId: b.listing?._id || b.listing?.id || b.listing,
+            listingTitle: b.listing?.title || b.listing?.location || 'Property',
+            guest: b.user?.name || b.user?.email || 'Guest',
+            guestId: b.user?._id || b.user?.id || b.user,
+            guestEmail: b.user?.email || '',
+            guestPhone: b.user?.phone || '',
+            guestAvatar: b.user?.avatar || '',
+            dates: b.dates,
+            startDate: b.startDate,
+            endDate: b.endDate,
+            price: `₹${b.totalPrice?.toLocaleString('en-IN')}`,
+            totalPrice: b.totalPrice,
+            status: b.status,
+            code: b.code,
+            img: b.user?.avatar || `https://i.pravatar.cc/150?u=${b._id}`,
+            rating: null
+          }));
+          setReservations(mapped);
+        }
+      } catch (err) {
+        console.warn('Could not load real bookings, showing mock data:', err.message);
+      } finally {
+        setLoadingReservations(false);
+      }
+    };
+    getHostBookings();
+  }, []);
+
+  const handleUpdateReservationStatus = async (reservationId, newStatus) => {
+    try {
+      await updateBookingStatus(reservationId, newStatus);
+      setReservations(prev => prev.map(r =>
+        r.id === reservationId ? { ...r, status: newStatus } : r
+      ));
+    } catch (err) {
+      showStatus("Error", 'Failed to update booking: ' + err.message);
+    }
+  };
+
 
   // Inline Block Dates State
   const [isBlockingMode, setIsBlockingMode] = useState(false);
@@ -448,22 +780,243 @@ const HostDashboard = () => {
   const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
 
   const getDailyReservations = (day) => {
-     return reservations.filter(res => {
-        if (selectedListingId !== 'all' && res.listingId != selectedListingId) return false;
-        
-        // Hide unavailable blocks from the "All Listings" view
-        if (selectedListingId === 'all' && res.status === 'Unavailable') return false;
+    const target = new Date(day);
+    target.setHours(0,0,0,0);
 
-        // Simple check if day matches start or is within range (simulated)
-        const start = new Date(res.startDate);
-        const end = new Date(res.endDate);
-        // Reset times for accurate comparison
-        start.setHours(0,0,0,0);
-        end.setHours(0,0,0,0);
-        day.setHours(0,0,0,0);
-        
-        return day >= start && day <= end;
-     });
+    const daily = (reservations || []).filter(res => {
+      const start = new Date(res.startDate);
+      start.setHours(0,0,0,0);
+      const end = new Date(res.endDate);
+      end.setHours(0,0,0,0);
+      
+      return target >= start && target <= end;
+    });
+
+    // Add manual blocks from listing document
+    if (selectedListingId !== 'all' && selectedListing?.blockedDates) {
+       const isBlocked = selectedListing.blockedDates.some(bd => {
+          const d = new Date(bd);
+          return d.getFullYear() === target.getFullYear() && 
+                 d.getMonth() === target.getMonth() && 
+                 d.getDate() === target.getDate();
+       });
+       if (isBlocked) {
+          daily.push({ id: `block-${target.getTime()}`, status: 'Unavailable', guest: 'Unavailable' });
+       }
+    }
+    return daily;
+  };
+
+  const getPriceForDay = (day) => {
+    if (!selectedListing) return 0;
+    
+    const dayStr = day.toISOString().split('T')[0];
+    
+    // 1. Check for specific date override
+    if (selectedListing.priceOverrides && Array.isArray(selectedListing.priceOverrides)) {
+      const override = selectedListing.priceOverrides.find(ov => 
+        new Date(ov.date).toISOString().split('T')[0] === dayStr
+      );
+      if (override) return override.price;
+    }
+    
+    // 2. Check for weekend pricing (Fri/Sat)
+    const dayOfWeek = day.getDay();
+    if ((dayOfWeek === 5 || dayOfWeek === 6) && selectedListing.weekendPrice) {
+      return selectedListing.weekendPrice;
+    }
+    
+    // 3. Return base price
+    return selectedListing.price || 0;
+  };
+
+  const resetPricingSelection = () => {
+    setPricingRange({ start: null, end: null });
+    setIsPricingDrawerOpen(false);
+  };
+
+   const handleDayClick = (day) => {
+    if (isBlockingMode) {
+      if (selectedListingId === 'all') {
+        showStatus("Selection Required", "Please select a specific listing to block dates for.");
+        return;
+      }
+      toggleDateSelection(day.toISOString());
+      return;
+    }
+    
+    if (selectedListingId === 'all') {
+      showStatus("Select a listing", "Please select a specific listing to manage pricing.");
+      return;
+    }
+
+    const clickedDay = new Date(day);
+    clickedDay.setHours(0,0,0,0);
+
+    if (!pricingRange.start || (pricingRange.start && pricingRange.end)) {
+      setPricingRange({ start: clickedDay, end: null });
+      setPendingPrice(String(getPriceForDay(clickedDay)));
+      setIsPricingDrawerOpen(true);
+    } else {
+      const start = pricingRange.start;
+      if (clickedDay < start) {
+        setPricingRange({ start: clickedDay, end: start });
+      } else {
+        setPricingRange({ ...pricingRange, end: clickedDay });
+      }
+    }
+  };
+
+  const handleToggleSingleDateBlock = async () => {
+    if (!pricingRange.start || selectedListingId === 'all') return;
+    
+    // Check if it's a mock ID
+    const targetId = selectedListing?._id || selectedListing?.id || selectedListingId;
+    const isMockId = String(targetId).length < 12 || !targetId.toString().match(/^[0-9a-fA-F]{24}$/);
+    
+    const datesToToggle = pricingRange.end 
+      ? eachDayOfInterval({ start: pricingRange.start, end: pricingRange.end }).map(d => d.toISOString())
+      : [pricingRange.start.toISOString()];
+
+    if (isMockId) {
+       showStatus("Demo Mode", "This is a placeholder listing. Real availability toggling requires an API-backed property.");
+       return;
+    }
+
+    // If we're marking as AVAILABLE (i.e. currently blocked), we need confirmation
+    const isCurrentlyBlocked = getDailyReservations(pricingRange.start).some(r => r.status === 'Unavailable');
+    
+    if (isCurrentlyBlocked) {
+       setPendingUnblockDates(datesToToggle);
+       setIsCalendarUnblockModalOpen(true);
+       return;
+    }
+
+    try {
+      const response = await fetch(`/api/listings/${targetId}/blocked-dates`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('hostify_token')}`
+        },
+        body: JSON.stringify({ dates: datesToToggle })
+      });
+      
+      if (!response.ok) throw new Error("Failed to update availability");
+      
+      if (refreshListings) await refreshListings();
+      showStatus("Success", "Date availability updated.");
+      setIsPricingDrawerOpen(false);
+    } catch (err) {
+      console.error("Error toggling block:", err);
+      showStatus("Persistence Error", "Could not update availability.");
+    }
+  };
+
+  const handleImmediateUnblock = async (day) => {
+    if (selectedListingId === 'all') return;
+    
+    const dates = [day.toISOString()];
+    setPendingUnblockDates(dates);
+    setIsCalendarUnblockModalOpen(true);
+  };
+
+  const confirmCalendarUnblock = async () => {
+    const targetId = selectedListing?._id || selectedListing?.id || selectedListingId;
+    
+    try {
+      const response = await fetch(`/api/listings/${targetId}/blocked-dates`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('hostify_token')}`
+        },
+        body: JSON.stringify({ dates: pendingUnblockDates })
+      });
+      
+      if (!response.ok) throw new Error("Failed to update availability");
+      
+      if (refreshListings) await refreshListings();
+      setIsCalendarUnblockModalOpen(false);
+      setPendingUnblockDates([]);
+      setIsPricingDrawerOpen(false);
+      showStatus("Success", "Dates are now available for booking.");
+    } catch (err) {
+      console.error("Error toggling block:", err);
+      showStatus("Error", "Could not update availability.");
+    }
+  };
+
+  const handleMessageGuest = async (res) => {
+    // Normalizing IDs to strings
+    const guestId = String(res.guestId?._id || res.guestId?.id || res.guestId || '');
+    const listingId = String(res.listingId?._id || res.listingId?.id || res.listingId || '');
+    
+    if (!guestId || guestId === 'undefined' || !listingId || listingId === 'undefined') {
+       console.warn("Incomplete booking data for messaging:", { guestId, listingId });
+       setActiveTab('messages');
+       return;
+    }
+
+    // Try to find an existing conversation with this guest for this specific listing
+    let targetConv = conversations.find(conv => {
+      const convListingId = String(conv.listing?._id || conv.listing?.id || conv.listing || '');
+      const hasGuest = conv.participants?.some(p => String(p._id || p.id || p) === guestId);
+      return hasGuest && convListingId === listingId;
+    });
+
+    if (!targetConv) {
+       // Start a new conversation via API
+       try {
+          const newConv = await startConversation(guestId, listingId);
+          if (newConv) {
+             setConversations(prev => [newConv, ...prev]);
+             targetConv = newConv;
+          }
+       } catch (err) {
+          console.error("Failed to start conversation:", err);
+       }
+    }
+
+    // Fallback: If still no conversation (e.g. mock data or API failed), try finding any conversation with this guest name
+    if (!targetConv) {
+       targetConv = conversations.find(conv => 
+         conv.participants?.some(p => p.name === res.guest)
+       );
+    }
+
+    if (targetConv) {
+      setSelectedConversation(targetConv);
+    }
+
+    setActiveTab('messages');
+  };
+
+  const handleBulkPriceUpdate = async () => {
+    if (!pricingRange.start || !selectedListing || !pendingPrice) return;
+    
+    const startDate = pricingRange.start;
+    const endDate = pricingRange.end || pricingRange.start;
+    
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/listings/${selectedListing._id || selectedListing.id}/price-overrides`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          price: Number(pendingPrice)
+        })
+      });
+      
+      if (response.ok) {
+        showStatus("Pricing Updated", "The new rates have been applied successfully.");
+        if (refreshListings) await refreshListings();
+        resetPricingSelection();
+      }
+    } catch (err) {
+      showStatus("Update Failed", "Could not save pricing changes.");
+    }
   };
 
   const handleCreateNew = () => {
@@ -488,7 +1041,7 @@ const HostDashboard = () => {
     if (!file) return;
 
     if (selectedListingId === 'all') {
-      alert("Please select a specific listing to import calendar data.");
+      showStatus("Selection Required", "Please select a specific listing to import calendar data.");
       return;
     }
 
@@ -512,7 +1065,7 @@ const HostDashboard = () => {
     }));
 
      setReservations(prev => [...prev, ...newBlocks]);
-     alert(`${file.name} imported successfully. 4 new blocks added.`);
+     showStatus("Import Success", `${file.name} imported successfully. 4 new blocks added.`);
      e.target.value = null;
    };
 
@@ -598,18 +1151,19 @@ const HostDashboard = () => {
            <button onClick={() => setActiveTab('calendar')} className={`nav-item ${activeTab === 'calendar' ? 'active' : ''}`}>
              Calendar
            </button>
-           <button onClick={() => setActiveTab('monthly-plans')} className={`nav-item ${activeTab === 'monthly-plans' ? 'active' : ''}`}>
-             Monthly Plans
-           </button>
             <button onClick={() => setActiveTab('financials')} className={`nav-item ${activeTab === 'financials' ? 'active' : ''}`}>
              Financials & Payouts
             </button>
            <button onClick={() => setActiveTab('messages')} className={`nav-item ${activeTab === 'messages' ? 'active' : ''}`}>
              Messages <span className="badge-count">1</span>
            </button>
-           <button onClick={() => setActiveTab('reviews')} className={`nav-item ${activeTab === 'reviews' ? 'active' : ''}`}>
-             Guest Reviews
-           </button>
+            <button onClick={() => setActiveTab('reviews')} className={`nav-item ${activeTab === 'reviews' ? 'active' : ''}`}>
+              Guest Reviews
+            </button>
+            <button onClick={() => setActiveTab('profile')} className={`nav-item ${activeTab === 'profile' ? 'active' : ''}`}>
+              My Profile
+            </button>
+
 
         </nav>
         <div className="sidebar-footer">
@@ -620,7 +1174,19 @@ const HostDashboard = () => {
       {/* Main Content */}
       <main className="dashboard-main">
         <header className="main-header">
-           <h2>{activeTab === 'overview' ? 'Dashboard Overview' : activeTab === 'listings' ? 'My Listings' : activeTab === 'bookings' ? 'Reservations' : activeTab === 'calendar' ? 'Calendar & Availability' : activeTab === 'financials' ? 'Financials & Payouts' : activeTab === 'reviews' ? 'Guest Reviews' : activeTab === 'payout-details' ? 'Tax Profile' : activeTab === 'profile' ? 'My Profile' : 'Monthly Plans'}</h2>
+           <h2>
+             {activeTab === 'overview' ? 'Dashboard Overview' : 
+              activeTab === 'listings' ? 'My Listings' : 
+              activeTab === 'bookings' ? 'Reservations' : 
+              activeTab === 'calendar' ? 'Calendar & Availability' : 
+              activeTab === 'performance' ? 'Performance Analytics' :
+              activeTab === 'financials' ? 'Financials & Payouts' : 
+              activeTab === 'messages' ? 'Guest Messages' :
+              activeTab === 'reviews' ? 'Guest Reviews' : 
+              activeTab === 'payout-details' ? 'Tax Profile' : 
+              activeTab === 'profile' ? 'My Profile' : 
+              'Monthly Plans'}
+           </h2>
         </header>
 
         {activeTab === 'performance' && (
@@ -737,7 +1303,7 @@ const HostDashboard = () => {
                         <span className="stat-label-premium">Net Earnings</span>
                         <IndianRupee className="stat-icon-premium" size={20} />
                      </div>
-                     <div className="stat-value-premium">₹{payoutData?.summary?.totalPaid.toLocaleString('en-IN') || '0'}</div>
+                     <div className="stat-value-premium">₹{payoutData?.summary?.totalPaid?.toLocaleString('en-IN') || '0'}</div>
                      <div className="stat-trend-premium positive">Life-time received</div>
                   </div>
 
@@ -746,7 +1312,7 @@ const HostDashboard = () => {
                         <span className="stat-label-premium">Available Balance</span>
                         <Wallet className="stat-icon-premium" size={20} />
                      </div>
-                     <div className="stat-value-premium">₹{payoutData?.summary?.availableBalance.toLocaleString('en-IN') || '0'}</div>
+                     <div className="stat-value-premium">₹{payoutData?.summary?.availableBalance?.toLocaleString('en-IN') || '0'}</div>
                      <div className="stat-trend-premium">Ready for withdrawal</div>
                   </div>
 
@@ -755,7 +1321,7 @@ const HostDashboard = () => {
                         <span className="stat-label-premium">Upcoming Payouts</span>
                         <Calendar className="stat-icon-premium" size={20} />
                      </div>
-                     <div className="stat-value-premium">₹{payoutData?.summary?.pendingBalance.toLocaleString('en-IN') || '0'}</div>
+                     <div className="stat-value-premium">₹{payoutData?.summary?.pendingBalance?.toLocaleString('en-IN') || '0'}</div>
                      <div className="stat-trend-premium">Expected this month</div>
                   </div>
 
@@ -764,7 +1330,7 @@ const HostDashboard = () => {
                         <span className="stat-label-premium">Gross Volume</span>
                         <TrendingUp className="stat-icon-premium" size={20} />
                      </div>
-                     <div className="stat-value-premium">₹{payoutData?.summary?.totalGross.toLocaleString('en-IN') || '0'}</div>
+                     <div className="stat-value-premium">₹{payoutData?.summary?.totalGross?.toLocaleString('en-IN') || '0'}</div>
                      <div className="stat-trend-premium positive">Total bookings value</div>
                   </div>
                </div>
@@ -778,7 +1344,7 @@ const HostDashboard = () => {
                          <span className="action-icon">💳</span>
                          <div className="action-text">
                             <strong>Subscription Required</strong>
-                            <p>Activate "{l.title}" to start receiving bookings.</p>
+                            <p>Activate " {(l.title || "Untitled Listing").length > 50 ? `${(l.title || "Untitled Listing").substring(0, 50)}...` : (l.title || "Untitled Listing")} " to start receiving bookings.</p>
                          </div>
                          <button className="action-btn" onClick={() => handleSubscribe(l.id)}>Pay Now</button>
                       </div>
@@ -825,12 +1391,24 @@ const HostDashboard = () => {
                            <div className={`rb-status ${res.status.toLowerCase()}`}>
                               {res.status}
                            </div>
+                           <div className="rb-actions">
+                              <button 
+                                className="btn-icon-pulse" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMessageGuest(res);
+                                }}
+                                title="Message Guest"
+                              >
+                                <MessageSquare size={16} />
+                              </button>
+                           </div>
                         </div>
                      ))}
                   </div>
                </div>
             </div>
-        )}
+         )}
 
         {activeTab === 'listings' && (
              <div className="listings-content">
@@ -857,7 +1435,14 @@ const HostDashboard = () => {
                 </div>
                 
                 <div className="listings-grid-v2">
-                       {filteredListings.map(listing => {
+                       {filteredListings.length === 0 ? (
+                         <div className="empty-listings-state" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '60px 20px', background: 'white', borderRadius: '24px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏠</div>
+                            <h3 style={{ fontSize: '24px', fontWeight: '800', color: '#0f172a', marginBottom: '8px' }}>No Listings Found</h3>
+                            <p style={{ color: '#64748b', marginBottom: '24px' }}>It looks like you haven't created any authentic properties yet.</p>
+                            <Link to="/become-a-host" className="btn-save-draft" style={{ display: 'inline-flex', textDecoration: 'none' }}>Create Your First Listing</Link>
+                         </div>
+                       ) : filteredListings.map(listing => {
                         const createdAt = listing.createdAt ? new Date(listing.createdAt) : new Date();
                         const expiryDate = new Date(createdAt);
                         expiryDate.setMonth(createdAt.getMonth() + 1);
@@ -867,6 +1452,7 @@ const HostDashboard = () => {
                         const isExpired = listing.status === 'Active' && diffInDays <= 0;
                         const isExpiringSoon = listing.status === 'Active' && diffInDays > 0 && diffInDays <= 7;
                         const isPending = listing.status === 'Pending';
+                        const isPaymentRequired = listing.status === 'Payment Required';
                         const currentStatus = isExpired ? 'Expired' : listing.status;
                         
 
@@ -874,13 +1460,13 @@ const HostDashboard = () => {
                         const pendingRequests = reservations.filter(r => r.listingId === listing.id && r.status === 'Pending').length;
 
                         return (
-                            <div key={listing.id} className={`listing-card-premium ${isExpired ? 'is-expired' : isPending ? 'is-pending' : 'is-active'}`}>
+                            <div key={listing.id} className={`listing-card-premium ${isExpired ? 'is-expired' : isPaymentRequired ? 'is-pending' : isPending ? 'is-pending' : 'is-active'}`}>
                               {/* Top Status Header */}
                               <div className="card-top-header">
                                  <div className="status-indicator">
-                                    <span className="status-icon">{isExpired ? '✕' : isPending ? '⏳' : '✓'}</span>
+                                    <span className="status-icon">{isExpired ? '✕' : isPaymentRequired ? '!' : isPending ? '⏳' : '✓'}</span>
                                     <div className="status-text-group">
-                                       <span className="status-text">{isExpired ? 'EXPIRED LISTING' : isPending ? 'PENDING APPROVAL' : 'ACTIVE LISTING'}</span>
+                                       <span className="status-text">{isExpired ? 'EXPIRED LISTING' : isPaymentRequired ? 'PAYMENT REQUIRED' : isPending ? 'PENDING APPROVAL' : 'ACTIVE LISTING'}</span>
                                     </div>
                                  </div>
                                  <div className="status-date">
@@ -899,7 +1485,9 @@ const HostDashboard = () => {
 
                               <div className="card-image-wrapper">
                                   {(() => {
-                                    const hasPhoto = listing.photos && listing.photos.length > 0;
+                                    // Support both photos array and single image field (from API)
+                                    const firstPhoto = listing.photos?.[0];
+                                    const hasPhoto = firstPhoto || listing.image;
                                     if (!hasPhoto) {
                                       return (
                                         <div className="no-photo-placeholder">
@@ -908,11 +1496,12 @@ const HostDashboard = () => {
                                         </div>
                                       );
                                     }
-                                    let imgUrl = '';
-                                    const photo = listing.photos[0];
-                                    if (typeof photo === 'string') imgUrl = photo;
-                                    else if (photo instanceof File) imgUrl = URL.createObjectURL(photo);
-                                    else if (photo && photo.url) imgUrl = photo.url;
+                                    let imgUrl = listing.image || '';
+                                    if (firstPhoto) {
+                                      if (typeof firstPhoto === 'string') imgUrl = firstPhoto;
+                                      else if (firstPhoto instanceof File) imgUrl = URL.createObjectURL(firstPhoto);
+                                      else if (firstPhoto && firstPhoto.url) imgUrl = firstPhoto.url;
+                                    }
                                     return (
                                       <>
                                         <img src={imgUrl} alt={listing.title} className={isExpired || isPending ? 'desaturated' : ''} />
@@ -945,7 +1534,7 @@ const HostDashboard = () => {
                               <div className="card-content-premium">
                                  <div className="content-main-info">
                                     <div className="title-row">
-                                       <h4 className="premium-card-title">{listing.title || 'Untitled Listing'}</h4>
+                                       <h4 className="premium-card-title" title={listing.title || 'Untitled Listing'}>{listing.title || 'Untitled Listing'}</h4>
                                        <div className="premium-rating">
                                           <Star size={14} fill="#FFB800" color="#FFB800" />
                                           <span className="rating-val">{listing.rating > 0 ? listing.rating.toFixed(1) : 'New'}</span>
@@ -955,6 +1544,7 @@ const HostDashboard = () => {
                                     <p className="premium-location">{listing.location}</p>
                                  </div>
 
+                                 <div className="card-bottom-section" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                  <div className="premium-metrics-grid">
                                     <div className="metric-item">
                                        <span className="metric-label">Property Type</span>
@@ -979,19 +1569,21 @@ const HostDashboard = () => {
                                     <span className="premium-price-label">/ night</span>
                                  </div>
 
+                                 </div>{/* /card-bottom-section */}
+
                                  {/* Action Buttons */}
                                  <div className="premium-card-actions">
-                                    {isExpired ? (
+                                    {(isExpired || isPaymentRequired) ? (
                                        <div className="expired-actions-stack">
                                           <button 
                                              className="btn-renew-primary"
-                                             onClick={(e) => { e.stopPropagation(); handleSubscribe(listing.id); }}
+                                             onClick={(e) => { e.stopPropagation(); handleSubscribe(listing.id || listing._id); }}
                                           >
-                                             <span className="renew-icon">🔄</span> Renew & Go Live <span className="arrow">→</span>
+                                             <span className="renew-icon">⚡️</span> Renew & Go Live <span className="arrow">→</span>
                                           </button>
                                           <div className="secondary-actions-row">
                                              <button className="btn-premium-secondary" onClick={() => handleEdit(listing)}>Edit</button>
-                                             <button className="btn-premium-secondary">Preview</button>
+                                             <button className="btn-premium-secondary" onClick={() => navigate(`/rooms/${listing._id || listing.id}`, { state: { fromHost: true } })}>Preview</button>
                                           </div>
                                        </div>
                                     ) : isPending ? (
@@ -1003,7 +1595,12 @@ const HostDashboard = () => {
                                        <div className="active-actions-row">
                                           <button className="btn-premium-secondary" onClick={() => handleEdit(listing)}>Edit Listing</button>
                                           <button className="btn-premium-secondary" onClick={() => handleOpenPricing(listing)}>Manage Pricing</button>
-                                          <button className="btn-premium-secondary">View Public</button>
+                                          <button 
+                                            className="btn-premium-secondary" 
+                                            onClick={() => navigate(`/rooms/${listing._id || listing.id}`, { state: { fromHost: true } })}
+                                          >
+                                            View Public
+                                          </button>
                                        </div>
                                     )}
                                  </div>
@@ -1021,24 +1618,75 @@ const HostDashboard = () => {
           isOpen={isDeleteModalOpen}
           title="Delete Listing"
           message="Are you sure you want to delete this listing? This action cannot be undone."
-          confirmText="Yes, Delete"
-          cancelText="Cancel"
+          confirmText="Yes"
+          cancelText="No"
           onConfirm={confirmDelete}
           onCancel={cancelDelete}
           isDestructive={true}
+        />
+
+        <ConfirmationModal
+          isOpen={isUnblockModalOpen}
+          title="Remove Block"
+          message="Are you sure you want to remove this reservation block?"
+          confirmText="Yes"
+          cancelText="No"
+          onConfirm={confirmUnblock}
+          onCancel={() => setIsUnblockModalOpen(false)}
+        />
+
+        <ConfirmationModal
+          isOpen={isDiscardModalOpen}
+          title="Discard Changes"
+          message="You have unsaved changes to your calendar. Are you sure you want to discard them?"
+          confirmText="Yes"
+          cancelText="No"
+          onConfirm={confirmDiscard}
+          onCancel={() => setIsDiscardModalOpen(false)}
+          isDestructive={true}
+        />
+
+        <ConfirmationModal
+          isOpen={isPricingConfirmOpen}
+          title="Update Pricing"
+          message="Are you sure you want to apply these pricing changes to your listing?"
+          confirmText="Yes"
+          cancelText="No"
+          onConfirm={confirmUpdatePricing}
+          onCancel={() => setIsPricingConfirmOpen(false)}
+        />
+
+        <ConfirmationModal
+          isOpen={isCalendarUnblockModalOpen}
+          title="Make Dates Available"
+          message={`Are you sure you want to make ${pendingUnblockDates.length > 1 ? 'these dates' : 'this date'} available? This will allow guests to book them.`}
+          confirmText="Make Available"
+          cancelText="Cancel"
+          onConfirm={confirmCalendarUnblock}
+          onCancel={() => {
+            setIsCalendarUnblockModalOpen(false);
+            setPendingUnblockDates([]);
+          }}
         />
 
         <SubscriptionModal 
           isOpen={isSubModalOpen}
           onClose={() => setIsSubModalOpen(false)}
           onConfirm={handlePaymentSuccess}
+          listingId={listingToSubscribe?._id || listingToSubscribe?.id}
           listingTitle={listingToSubscribe?.title}
-          basePricePerUnit={499}
-          currentUnits={listingToSubscribe ? getListingLimit(listingToSubscribe.id) : 0}
-          totalInventory={listingToSubscribe ? getListingTotalInventory(listingToSubscribe.id) : 1}
         />
 
+        <ConfirmationModal 
+           isOpen={statusModal.isOpen}
+           title={statusModal.title}
+           message={statusModal.message}
+           onConfirm={closeStatus}
+           confirmText="OK"
+         />
+
         <PricingModal 
+           key={listingToPrice?._id || listingToPrice?.id || 'none'}
            isOpen={isPricingModalOpen}
            onClose={() => setIsPricingModalOpen(false)}
            listing={listingToPrice}
@@ -1081,7 +1729,7 @@ const HostDashboard = () => {
                                <button className="btn-decline">Decline</button>
                              </>
                           ) : (
-                             <button className="btn-link">Message</button>
+                             <button className="btn-link" onClick={() => handleMessageGuest(res)}>Message</button>
                           )}
                        </div>
                     </div>
@@ -1104,16 +1752,16 @@ const HostDashboard = () => {
                     
 
 
-                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                    <div className="cal-header-right">
                        <div className="cal-listing-selector">
                            <select 
                               value={selectedListingId} 
-                              onChange={(e) => setSelectedListingId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                              onChange={(e) => setSelectedListingId(e.target.value)}
                               className="listing-dropdown"
                            >
                               <option value="all">All Listings</option>
                               {listings.map(l => (
-                                 <option key={l.id} value={l.id}>{l.title}</option>
+                                 <option key={l.id} value={l.id}> {(l.title || "Untitled Listing").length > 50 ? `${(l.title || "Untitled Listing").substring(0, 50)}...` : (l.title || "Untitled Listing")} </option>
                               ))}
                            </select>
                        </div>
@@ -1131,7 +1779,7 @@ const HostDashboard = () => {
                              className="btn-outline-small" 
                              onClick={() => {
                                if (selectedListingId === 'all') {
-                                 alert("Please select a specific listing to setup automated sync.");
+                                 showStatus("Selection Required", "Please select a specific listing to setup automated sync.");
                                } else {
                                  setIsSyncModalOpen(true);
                                }
@@ -1158,11 +1806,33 @@ const HostDashboard = () => {
                         <span className="legend-item"><span className="dot available"></span> Available</span>
                         <span className="legend-item"><span className="dot offline"></span> Unavailable</span>
                         
-                        {!isBlockingMode && (
+                         {isBlockingMode ? (
+                           <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+                              <button 
+                                 className="btn-cancel-small" 
+                                 onClick={() => {
+                                   setIsBlockingMode(false);
+                                   setSelectedDatesToBlock([]);
+                                 }}
+                              >
+                                 Cancel
+                              </button>
+                              <button 
+                                 className="btn-save-small" 
+                                 onClick={() => {
+                                   handleSaveChanges();
+                                   setIsBlockingMode(false);
+                                   setSelectedDatesToBlock([]);
+                                 }}
+                              >
+                                 Save {selectedDatesToBlock.length > 0 ? `(${selectedDatesToBlock.length})` : ''}
+                              </button>
+                           </div>
+                         ) : (
                            <button className="btn-block-dates" style={{marginLeft: 'auto'}} onClick={() => setIsBlockingMode(true)}>
                              Mark dates as unavailable
                            </button>
-                        )}
+                         )}
                      </div>
                  </div>
                  
@@ -1175,7 +1845,7 @@ const HostDashboard = () => {
                         <div className="days-grid">
                             {calendarDays.map((day, idx) => {
                               const dailyReservations = getDailyReservations(new Date(day));
-                              const activeLimit = selectedListing ? getListingLimit(selectedListing.id) : 1;
+                              const activeLimit = selectedListingId === "all" ? listings.reduce((sum, l) => sum + (l.unitCount || 1), 0) : (selectedListing ? (selectedListing.unitCount || 1) : 1);
                               const isToday = isSameDay(day, new Date());
                               const isPastDay = day < new Date(new Date().setHours(0,0,0,0));
                               const isCurrentMonth = isSameMonth(day, currentMonth);
@@ -1183,14 +1853,24 @@ const HostDashboard = () => {
                               const hasBooking = totalBlocks > 0;
                               const isFull = totalBlocks >= activeLimit;
                               
+                              const isSelected = pricingRange.start && isSameDay(day, pricingRange.start);
+                              const isInRange = pricingRange.start && pricingRange.end && day >= pricingRange.start && day <= pricingRange.end;
+                              
+                              const isManualBlocked = dailyReservations.some(r => r.status === 'Unavailable');
+                              const isBlockingSelected = selectedDatesToBlock.includes(day.toISOString());
+
                               return (
-                                 <div key={day.toString()} className={`day-cell ${!isCurrentMonth ? 'outside' : ''} ${hasBooking ? 'booked' : ''} ${isFull ? 'fully-booked' : ''} ${isToday ? 'today' : ''} ${isBlockingMode ? 'blocking-mode-cell' : ''} ${isPastDay ? 'past-day' : ''}`}>
+                                 <div 
+                                   key={day.toString()} 
+                                   onClick={() => handleDayClick(day)} 
+                                   className={`day-cell ${!isCurrentMonth ? 'outside' : ''} ${hasBooking ? 'booked' : ''} ${isManualBlocked ? 'blocked' : ''} ${isFull ? 'fully-booked' : ''} ${isToday ? 'today' : ''} ${isBlockingMode ? 'blocking-mode-cell' : ''} ${isBlockingSelected ? 'blocking-selected' : ''} ${isPastDay ? 'past-day' : ''} ${isSelected ? 'selected' : ''} ${isInRange ? 'in-range' : ''}`}
+                                 >
                                     {isBlockingMode && !isPastDay && !isFull && (
                                       <input 
                                         type="checkbox" 
                                         className="day-block-checkbox"
-                                        checked={selectedDatesToBlock.includes(day.toISOString())}
-                                        onChange={() => toggleDateSelection(day.toISOString())}
+                                        checked={isBlockingSelected}
+                                        readOnly
                                       />
                                     )}
                                     <div className="day-number">{format(day, 'd')}</div>
@@ -1200,56 +1880,43 @@ const HostDashboard = () => {
                                         </div>
                                     )}
                                     <div className="day-price">
-                                       {selectedListingId === 'all' ? (
+                                       {selectedListingId === 'all' || isManualBlocked ? (
                                           ''
-                                       ) : (
-                                          <div className="month-price-input-wrapper">
-                                             <span className="currency-symbol">₹</span>
-                                             <input 
-                                                type="number" 
-                                                className="month-price-input" 
-                                                defaultValue={selectedListing?.price || '0'} 
-                                                onClick={(e) => e.stopPropagation()}
-                                                onChange={handlePriceChange}
-                                                disabled={isPastDay}
-                                             />
-                                          </div>
-                                       )}
+                                        ) : (
+                                           <div className="cell-price-label">
+                                              <span>₹{getPriceForDay(day)?.toLocaleString("en-IN")}</span>
+                                           </div>
+                                        )}
                                     </div>
                                     
                                     <div className="bookings-stack">
-                                       {dailyReservations.map((res, i) => (
+                                       {isManualBlocked ? (
+                                          <>
+                                             <div className="manual-block-indicator">Blocked</div>
+                                             <button 
+                                               className="unblock-text-btn"
+                                               onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleImmediateUnblock(day);
+                                               }}
+                                               style={{ marginTop: '4px', zIndex: 5 }}
+                                             >
+                                                Make Available
+                                             </button>
+                                          </>
+                                       ) : dailyReservations.map((res, i) => (
                                            <div 
                                              key={res.id} 
-                                             className={`booking-strip ${res.status === 'Unavailable' ? 'blocked-strip' : ''}`} 
+                                             className="booking-strip" 
                                              style={{
-                                                backgroundColor: res.status === 'Unavailable' ? '#a3a3a3' : (i % 2 === 0 ? 'var(--primary)' : '#222'),
+                                                backgroundColor: (i % 2 === 0 ? 'var(--primary)' : '#222'),
                                              }}
                                            >
-                                             {res.status === 'Unavailable' ? (
-                                                <div className="booking-strip-unavailable">
-                                                   <span className="unavailable-text-label">
-                                                      Unavailable
-                                                   </span>
-                                                   {!isPastDay && (
-                                                      <button 
-                                                         className="unblock-text-btn" 
-                                                         onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleRemoveBlock(res.id);
-                                                         }}
-                                                      >
-                                                         Mark available
-                                                      </button>
-                                                   )}
-                                                </div>
-                                             ) : (
-                                                <span className="booking-strip-title">
-                                                   {selectedListingId === 'all' 
-                                                      ? (listings.find(l => l.id === res.listingId)?.title?.split(' ').slice(0, 2).join(' ') || 'Listing')
-                                                      : res.guest.split(' ')[0]}
-                                                </span>
-                                             )}
+                                             <span className="booking-strip-title" title={selectedListingId === 'all' ? (res.listingTitle || '') : res.guest}>
+                                                {selectedListingId === 'all' 
+                                                   ? (res.listingTitle || 'Listing') 
+                                                   : (res.guest || 'Guest')}
+                                             </span>
                                            </div>
                                        ))}
                                     </div>
@@ -1264,65 +1931,79 @@ const HostDashboard = () => {
                         <div className="save-action-content">
                            <span>You have unsaved changes to your calendar.</span>
                            <div className="save-action-btns">
-                              <button className="btn-cancel" onClick={handleCancelChanges}>Discard</button>
+                              <button className="btn-cancel" onClick={handleDiscardClick}>Discard</button>
                               <button className="btn-save" onClick={handleSaveChanges}>Save Changes</button>
                            </div>
                         </div>
                      </div>
                   )}
-               </div>
-           </div>
-        )}
-
-        {activeTab === 'monthly-plans' && (
-           <div className="monthly-plans-content">
-               <div className="pricing-container-single">
-                  <div className="pricing-card premium-featured">
-                     <div className="plan-badge">Most Popular</div>
-                     <div className="plan-header-redesign">
-                        <h3>Host Premium</h3>
-                        <div className="price-stack">
-                           <span className="currency">₹</span>
-                           <span className="amount">499</span>
-                           <span className="period">/ month</span>
+                  
+                  {/* Pricing Adjustment Drawer */}
+                  <div className={`pricing-drawer ${isPricingDrawerOpen ? 'open' : ''}`}>
+                     <div className="drawer-header">
+                        <h3>Update Pricing</h3>
+                        <button className="btn-close-drawer" onClick={resetPricingSelection}>×</button>
+                     </div>
+                     <div className="drawer-body">
+                        <div className="selected-dates-info">
+                           <div className="date-badge">
+                              {pricingRange.start ? format(pricingRange.start, 'MMM d, yyyy') : 'Select start'}
+                              {pricingRange.end && ` — ${format(pricingRange.end, 'MMM d, yyyy')}`}
+                           </div>
+                           <p className="selection-hint">
+                              {!pricingRange.end ? "Select an end date on the calendar to update a range" : "Set the price for this period"}
+                           </p>
                         </div>
-                        <p className="plan-subtitle">Everything you need to host like a pro.</p>
-                     </div>
-                     
-                     <div className="plan-divider"></div>
+                        
+                        <div className="drawer-availability-section">
+                            <div className="availability-status">
+                               <span>Current status</span>
+                               {pricingRange.start && (
+                                  <span className={`status-badge ${getDailyReservations(pricingRange.start).some(r => r.status === 'Unavailable') ? 'status-blocked' : 'status-available'}`}>
+                                     {getDailyReservations(pricingRange.start).some(r => r.status === 'Unavailable') ? 'Unavailable' : 'Available'}
+                                  </span>
+                               )}
+                            </div>
+                            <button 
+                               className="btn-availability-toggle"
+                               onClick={handleToggleSingleDateBlock}
+                            >
+                               {pricingRange.start && getDailyReservations(pricingRange.start).some(r => r.status === 'Unavailable') 
+                                  ? 'Mark as Available' 
+                                  : 'Mark as Unavailable'}
+                            </button>
+                         </div>
+                         
+                         <div className="drawer-form-group">
+                           <label>Nightly Price</label>
+                           <div className="drawer-input-wrapper">
+                              <span className="currency">₹</span>
+                              <input 
+                                 type="number" 
+                                 value={pendingPrice}
+                                 onChange={(e) => setPendingPrice(e.target.value)}
+                                 placeholder="e.g. 5500"
+                              />
+                           </div>
+                        </div>
 
-                     <div className="features-grid">
-                        <ul className="plan-features-list">
-                           <li>
-                              <span className="check-icon">✓</span>
-                              <span><strong>24/7 Priority Support</strong> (Phone & Chat)</span>
-                           </li>
-                           <li>
-                              <span className="check-icon">✓</span>
-                              <span><strong>Add-on Inventory</strong> (Pay as you grow)</span>
-                           </li>
-                        </ul>
-                        <ul className="plan-features-list">
-                           <li>
-                              <span className="check-icon">✓</span>
-                              <span><strong>Advanced Analytics</strong> & Insights</span>
-                           </li>
-                           <li>
-                              <span className="check-icon">✓</span>
-                              <span><strong>Smart Pricing Tools</strong> & Automation</span>
-                           </li>
-                        </ul>
-                     </div>
-
-                     <div className="plan-action-area">
-                        <button className="btn-activate-premium" onClick={() => setIsSubModalOpen(true)}>
-                           Get Started with Premium
-                        </button>
+                        <div className="drawer-actions">
+                           <button 
+                             className="btn-premium" 
+                             disabled={!pricingRange.start || !pendingPrice}
+                             onClick={handleBulkPriceUpdate}
+                           >
+                              Apply Changes
+                           </button>
+                           <button className="btn-premium-secondary" onClick={resetPricingSelection}>Cancel</button>
+                        </div>
                      </div>
                   </div>
                </div>
            </div>
         )}
+
+
 
          {activeTab === 'financials' && (
             <div className="financials-layout-premium">
@@ -1330,7 +2011,7 @@ const HostDashboard = () => {
                <div className="financials-hero-section">
                   <div className="balance-card-main">
                      <div className="balance-label">Available for Withdrawal</div>
-                     <div className="balance-amount-large">₹{payoutData?.summary?.availableBalance.toLocaleString('en-IN') || '0'}</div>
+                     <div className="balance-amount-large">₹{payoutData?.summary?.availableBalance?.toLocaleString('en-IN') || '0'}</div>
                      <button className="btn-withdraw-now" disabled={!payoutData?.summary?.availableBalance}>
                         <Wallet size={18} /> Withdraw Funds
                      </button>
@@ -1342,7 +2023,7 @@ const HostDashboard = () => {
                         <div className="mini-card-header">
                            <Calendar size={16} /> Upcoming
                         </div>
-                        <div className="mini-card-value">₹{payoutData?.summary?.pendingBalance.toLocaleString('en-IN') || '0'}</div>
+                        <div className="mini-card-value">₹{payoutData?.summary?.pendingBalance?.toLocaleString('en-IN') || '0'}</div>
                         <div className="mini-card-desc">Held in escrow (Check-in + 24h)</div>
                      </div>
                      <div className="summary-mini-card">
@@ -1355,34 +2036,115 @@ const HostDashboard = () => {
                   </div>
                </div>
 
-               <div className="financials-grid-content">
-                  {/* Transaction History Sub-Tab */}
-                  <div className="txn-history-section">
-                     <div className="section-header-row">
-                        <h3>Payout History</h3>
-                        <div className="header-actions">
-                           <button className="btn-action-outline"><Download size={14} /> Export</button>
-                        </div>
-                     </div>
+                <div className="financials-grid-content">
+                   {/* Transaction History Sub-Tab */}
+                   <div className="txn-history-section">
+                      <div className="section-header-row">
+                         <div className="tab-switcher-premium">
+                            <button 
+                              className={`sub-tab-btn ${(!searchParams.get('subTab') || searchParams.get('subTab') === 'ledger') ? 'active' : ''}`}
+                              onClick={() => {
+                                const newParams = new URLSearchParams(searchParams);
+                                newParams.set('subTab', 'ledger');
+                                setSearchParams(newParams);
+                              }}
+                            >
+                              Transaction Ledger
+                            </button>
+                            <button 
+                              className={`sub-tab-btn ${searchParams.get('subTab') === 'subscriptions' ? 'active' : ''}`}
+                              onClick={() => {
+                                const newParams = new URLSearchParams(searchParams);
+                                newParams.set('subTab', 'subscriptions');
+                                setSearchParams(newParams);
+                              }}
+                            >
+                              Subscriptions
+                            </button>
+                         </div>
+                         <div className="header-actions">
+                            <button className="btn-action-outline"><Download size={14} /> Export</button>
+                         </div>
+                      </div>
                      
                      <div className="premium-txn-list">
                         {loadingPayouts ? (
                           <div className="loading-shimmer-payouts">Loading financial records...</div>
-                        ) : payoutData?.transactions?.length > 0 ? (
-                          payoutData.transactions.map(tx => (
-                            <div key={tx.id} className="premium-txn-item">
+                        ) : (payoutData?.transactions || []).filter(tx => (searchParams.get('subTab') || 'ledger') === 'subscriptions' ? tx.category === 'Subscription' : true).length > 0 ? (
+                          (payoutData?.transactions || [])
+                            .filter(tx => (searchParams.get('subTab') || 'ledger') === 'subscriptions' ? tx.category === 'Subscription' : true)
+                            .map(tx => (
+                            <div key={tx._id || tx.id} className="premium-txn-item">
                                <div className="txn-info-group">
-                                  <div className="txn-icon-circle"><CreditCard size={16} /></div>
+                                  <div className={`txn-icon-circle ${tx.type?.toLowerCase() || 'credit'}`}>
+                                    {tx.type === 'Credit' ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
+                                  </div>
                                   <div className="txn-main-details">
-                                     <div className="txn-title">{tx.propertyName}</div>
-                                     <div className="txn-meta">Code: {tx.bookingCode} • Check-in: {new Date(tx.checkIn).toLocaleDateString()}</div>
+                                     {(() => {
+                                         const propertyName = tx.metadata?.propertyName || tx.listingId?.title || tx.propertyName || '';
+                                         const plan = (tx.metadata?.planName || 'Monthly').replace(/\s*Activation\s*/i, '').trim();
+                                         let resolvedPlan = plan;
+                                         let resolvedProperty = propertyName;
+
+                                         if (!propertyName) {
+                                           const raw = tx.description || '';
+                                           const legacyMatch = raw.match(/Subscription to .+ Plan for property:\s*(.+)/i);
+                                           if (legacyMatch) resolvedProperty = legacyMatch[1];
+                                           else {
+                                             const midotMatch = raw.match(/Monthly(?:\s*Activation)?\s*·\s*(.+)/i);
+                                             if (midotMatch) resolvedProperty = midotMatch[1];
+                                           }
+                                         }
+
+                                         return (
+                                           <>
+                                             <div className="txn-title">{resolvedPlan}</div>
+                                             {resolvedProperty && <div className="txn-property-name">{resolvedProperty}</div>}
+                                           </>
+                                         );
+                                       })()}
+                                     <div className="txn-meta">{new Date(tx.createdAt || tx.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
                                   </div>
                                </div>
-                               <div className="txn-financial-group">
-                                  <div className="txn-amount-net">₹{tx.netAmount.toLocaleString('en-IN')}</div>
-                                  <div className={`txn-status-badge ${tx.status.toLowerCase()}`}>
-                                     {tx.status}
+                               <div className="txn-financial-group" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '20px' }}>
+                                  <div className="txn-financial-details" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                                     <div className={`txn-amount-net ${tx.type?.toLowerCase() || 'credit'}`}>
+                                       ₹{(tx.amount || tx.netAmount)?.toLocaleString('en-IN')}
+                                     </div>
+                                     <div className={`txn-status-badge ${tx.status?.toLowerCase() === 'completed' ? 'paid' : (tx.status?.toLowerCase() || 'completed')}`}>
+                                        {tx.status || 'Completed'}
+                                     </div>
                                   </div>
+                                  
+                                  <button 
+                                     className="btn-download-invoice"
+                                     onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(tx); }}
+                                     title="Download Invoice"
+                                     style={{
+                                        background: 'transparent',
+                                        border: '1px solid #e2e8f0',
+                                        borderRadius: '8px',
+                                        padding: '10px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: '#64748b',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease',
+                                     }}
+                                     onMouseEnter={(e) => {
+                                        e.currentTarget.style.borderColor = '#94a3b8';
+                                        e.currentTarget.style.color = '#334155';
+                                        e.currentTarget.style.background = '#f8fafc';
+                                     }}
+                                     onMouseLeave={(e) => {
+                                        e.currentTarget.style.borderColor = '#e2e8f0';
+                                        e.currentTarget.style.color = '#64748b';
+                                        e.currentTarget.style.background = 'transparent';
+                                     }}
+                                  >
+                                     <Download size={18} />
+                                  </button>
                                </div>
                             </div>
                           ))
@@ -1556,47 +2318,201 @@ const HostDashboard = () => {
             <div className="messages-content">
                <div className="messages-sidebar-layout">
                   <div className="messages-list">
-                     {['Alice Johnson', 'Charlie Brown'].map(guest => (
-                       <div 
-                         key={guest} 
-                         className={`message-thread-item ${activeMessageGuest === guest ? 'active' : ''}`}
-                         onClick={() => setActiveMessageGuest(guest)}
-                       >
-                         <div className="message-avatar">{guest.charAt(0)}</div>
-                         <div className="message-preview">
-                           <h4>{guest}</h4>
-                           <p>Click to view conversation</p>
-                         </div>
-                       </div>
-                     ))}
+                     {loadingConversations ? (
+                        <div className="loading-state" style={{ padding: '20px', textAlign: 'center' }}>Loading conversations...</div>
+                     ) : conversations.length === 0 ? (
+                        <div className="no-data" style={{ padding: '20px', textAlign: 'center' }}>No messages yet.</div>
+                     ) : conversations.map(conv => {
+                        const otherParticipant = conv.participants?.find(p => String(p._id) !== String(user?.id || user?._id)) || conv.participants?.[0] || { name: 'Guest' };
+                        return (
+                          <div 
+                            key={conv._id || conv.id} 
+                            className={`message-thread-item ${(selectedConversation?._id || selectedConversation?.id) === (conv._id || conv.id) ? 'active' : ''}`}
+                            onClick={() => setSelectedConversation(conv)}
+                          >
+                            <div 
+                              className="message-avatar" 
+                              style={{ 
+                                backgroundImage: otherParticipant.image ? `url(${otherParticipant.image})` : 'none',
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center'
+                              }}
+                            >
+                               {!otherParticipant.image && otherParticipant.name?.charAt(0)}
+                            </div>
+                            <div className="message-preview">
+                              <h4>{otherParticipant.name}</h4>
+                              <p>{conv.lastMessage || 'No messages yet'}</p>
+                              <span className="msg-time" style={{ fontSize: '10px', color: '#999' }}>
+                                {conv.updatedAt ? format(new Date(conv.updatedAt), 'MMM dd') : ''}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                     })}
                   </div>
                   <div className="messages-chat-window">
-                     <div className="chat-header">
-                       <h4>{activeMessageGuest}</h4>
+                     {selectedConversation ? (
+                        <>
+                           <div className="chat-header">
+                             <h4>{selectedConversation.participants?.find(p => String(p._id) !== String(user?.id || user?._id))?.name || 'Conversation'}</h4>
+                           </div>
+                           <div className="chat-history">
+                             {messages.map(msg => (
+                               <div key={msg._id || msg.id} className={`chat-bubble-wrapper ${(msg.sender === (user?.id || user?._id) || msg.senderId === (user?.id || user?._id)) ? 'host' : 'guest'}`}>
+                                 <div className="chat-bubble">{msg.text || msg.message}</div>
+                                 <span className="chat-time">{msg.timestamp ? format(new Date(msg.timestamp), 'HH:mm') : format(new Date(), 'HH:mm')}</span>
+                               </div>
+                             ))}
+                             <div ref={chatEndRef} />
+                           </div>
+                           <div className="chat-input-area">
+                             <input 
+                               type="text" 
+                               value={newMessageText} 
+                               onChange={(e) => setNewMessageText(e.target.value)}
+                               placeholder="Type a message..."
+                               onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                             />
+                             <button className="btn-primary" onClick={handleSendMessage} disabled={!newMessageText.trim()}>Send</button>
+                           </div>
+                        </>
+                     ) : (
+                        <div className="empty-chat-state" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
+                           <MessageSquare size={48} />
+                           <p>Select a guest conversation to start messaging</p>
+                        </div>
+                     )}
+                  </div>
+               </div>
+            </div>
+         )}
+         {activeTab === 'profile' && (
+            <div className="profile-tab-content-premium">
+               <div className="profile-layout-grid-premium">
+                  {/* Left Column: Avatar & Summary */}
+                  <div className="profile-sidebar-card-premium">
+                     <div className="profile-avatar-wrapper-premium">
+                        <div 
+                          className="profile-avatar-large-premium"
+                          style={{ 
+                            backgroundImage: profile.avatar ? `url(${profile.avatar})` : 'none',
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center'
+                          }}
+                        >
+                           {!profile.avatar && (profile.name?.charAt(0) || user?.name?.charAt(0) || 'H')}
+                        </div>
+                        <label className="avatar-upload-btn-premium">
+                           <Camera size={16} />
+                           Update Photo
+                           <input type="file" onChange={handleAvatarChange} hidden accept="image/*" />
+                        </label>
                      </div>
-                     <div className="chat-history">
-                       {mockMessages.filter(m => m.guest === activeMessageGuest).map(msg => (
-                         <div key={msg.id} className={`chat-bubble-wrapper ${msg.isHost ? 'host' : 'guest'}`}>
-                           <div className="chat-bubble">{msg.text}</div>
-                           <span className="chat-time">{msg.time}</span>
-                         </div>
-                       ))}
+                     
+                     <div className="profile-summary-premium">
+                        <h3>{profile.name}</h3>
+                        <p className="p-role-badge">Verified Host</p>
+                        <div className="p-meta-stats">
+                           <div className="p-meta-item">
+                              <strong>{listings.length}</strong>
+                              <span>Listings</span>
+                           </div>
+                           <div className="p-divider"></div>
+                           <div className="p-meta-item">
+                              <strong>4.8</strong>
+                              <span>Rating</span>
+                           </div>
+                        </div>
                      </div>
-                     <div className="chat-input-area">
-                       <input 
-                         type="text" 
-                         value={newMessageText} 
-                         onChange={(e) => setNewMessageText(e.target.value)}
-                         placeholder="Type a message..."
-                         onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                       />
-                       <button className="btn-primary" onClick={handleSendMessage}>Send</button>
+
+                     <div className="profile-verification-list">
+                        <div className="v-item verified">
+                           <ShieldCheck size={14} /> Email Verified
+                        </div>
+                        <div className="v-item verified">
+                           <ShieldCheck size={14} /> Identity Verified
+                        </div>
+                        <div className="v-item verified">
+                           <ShieldCheck size={14} /> Phone Verified
+                        </div>
                      </div>
+                  </div>
+
+                  {/* Right Column: Edit Form */}
+                  <div className="profile-main-edit-card-premium">
+                     <h3>Personal Details</h3>
+                     <p className="section-desc-premium">Your public profile name and bio will help guests get to know you before they book.</p>
+                     
+                     {loadingProfile ? (
+                        <div className="loading-profile-state">Fetching your details...</div>
+                     ) : (
+                        <div className="profile-edit-form-premium">
+                           <div className="form-row-premium">
+                              <div className="form-group-premium">
+                                 <label>Legal Name</label>
+                                 <input 
+                                   type="text" 
+                                   name="name" 
+                                   value={profile.name} 
+                                   onChange={handleProfileUpdate} 
+                                   placeholder="Your display name"
+                                 />
+                              </div>
+                              <div className="form-group-premium">
+                                 <label>Email Address</label>
+                                 <input 
+                                   type="email" 
+                                   value={profile.email} 
+                                   disabled 
+                                   className="input-disabled-premium"
+                                   title="Email cannot be changed"
+                                 />
+                                 <span className="input-hint-premium">Used for platform notifications</span>
+                              </div>
+                           </div>
+
+
+
+                           <div className="form-row-premium">
+                              <div className="form-group-premium">
+                                 <label>Phone Number</label>
+                                 <input 
+                                   type="tel" 
+                                   name="phone" 
+                                   value={profile.phone} 
+                                   onChange={handleProfileUpdate} 
+                                   placeholder="e.g. +91 98765 43210"
+                                 />
+                              </div>
+                              <div className="form-group-premium">
+                                 <label>Host Since</label>
+                                 <input 
+                                   type="text" 
+                                   value={new Date(user?.createdAt || Date.now()).toLocaleDateString('en-IN', { year: 'numeric', month: 'long' })} 
+                                   disabled 
+                                   className="input-disabled-premium"
+                                 />
+                              </div>
+                           </div>
+
+                           <div className="form-actions-premium">
+                              <button 
+                                className="btn-save-profile-premium" 
+                                onClick={handleSaveProfile}
+                                disabled={isSavingProfile}
+                              >
+                                {isSavingProfile ? 'Saving Changes...' : 'Save Profile Changes'}
+                              </button>
+                           </div>
+                        </div>
+                     )}
                   </div>
                </div>
             </div>
          )}
       </main>
+
       
       <LimitManagementModal
         isOpen={isLimitModalOpen}

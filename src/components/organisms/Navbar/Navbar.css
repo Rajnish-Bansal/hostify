@@ -1,30 +1,24 @@
 .navbar {
   position: fixed;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: calc(100% - 40px); /* Slightly tighter for better padding */
-  max-width: 1280px;
+  top: 0;
+  left: 0;
+  width: 100%;
   z-index: 1100;
-  background-color: rgba(255, 255, 255, 0.9); /* Higher opacity for reliability */
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border-light);
-  box-shadow: var(--shadow-lg);
-  border-radius: var(--radius-full);
-  height: 72px;
-  transition: all 0.3s ease;
+  background-color: var(--bg-primary);
+  border-bottom: 1px solid var(--border-light);
+  height: 80px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.navbar:hover {
-  background-color: rgba(255, 255, 255, 0.95);
-  box-shadow: var(--shadow-floating);
+.navbar.scrolled {
+  box-shadow: var(--shadow-md);
+  height: 70px;
 }
 
 .navbar-container {
-  max-width: 100%;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 0 var(--spacing-lg);
+  padding: 0 var(--spacing-xl);
   height: 100%;
   display: flex;
   align-items: center;
@@ -37,15 +31,52 @@
   align-items: center;
 }
 
+.navbar-made-in-india {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-left: 20px;
+  padding-left: 20px;
+  border-left: 1px solid var(--border-light);
+  white-space: nowrap;
+}
+
+.navbar-made-in-india span {
+  background: var(--primary-soft);
+  color: var(--primary);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 9px;
+  border: 1px solid rgba(50, 192, 192, 0.15);
+}
+
+.logo-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.logo-wrapper:hover {
+  opacity: 0.8;
+}
+
+.logo-icon {
+  font-size: 26px;
+}
+
 .logo-text {
-  color: var(--secondary);
+  color: var(--primary);
   font-family: var(--font-heading);
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 800;
-  letter-spacing: -0.5px;
-  background: linear-gradient(45deg, var(--secondary), var(--primary));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.8px;
 }
 
 .navbar-user {
@@ -53,20 +84,87 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--spacing-md);
+  gap: var(--spacing-lg);
 }
+
+.navbar-search-pill {
+  flex: 0 1 auto;
+  min-width: 300px;
+  max-width: 400px;
+  background: white;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-full);
+  padding: 8px 12px 8px 16px;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 24px;
+  animation: pillEnter 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes pillEnter {
+  from { opacity: 0; transform: scale(0.8) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.navbar-search-pill:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary);
+}
+
+.search-pill-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
+}
+
+.pill-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pill-search-icon {
+  background-color: var(--primary);
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 
 .host-link {
   font-size: 14px;
   font-weight: 600;
-  color: var(--secondary);
-  padding: 10px 20px;
-  border-radius: var(--radius-full);
-  transition: all 0.2s ease;
+  color: var(--text-primary);
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  transition: all 0.2s;
 }
 
 .host-link:hover {
-  background-color: rgba(245, 158, 11, 0.1);
+  background-color: var(--primary-soft);
+  color: var(--primary);
+}
+
+.globe-button {
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.globe-button:hover {
   color: var(--primary);
 }
 
@@ -74,37 +172,36 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  padding: 6px 6px 6px 16px;
-  background-color: var(--secondary);
-  color: white;
+  padding: 8px 8px 8px 16px;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-full);
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s;
 }
 
 .user-menu-button:hover {
-  background-color: var(--secondary-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+  border-color: var(--primary);
+  box-shadow: var(--shadow-sm);
 }
 
 .user-menu-button .user-icon {
-  background-color: var(--primary);
-  color: var(--secondary);
+  color: var(--text-secondary);
 }
 
 .user-dropdown-menu {
   position: absolute;
   top: calc(100% + 12px);
   right: 0;
-  width: 250px;
+  width: 260px;
   background: white;
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-floating);
+  box-shadow: var(--shadow-lg);
   border: 1px solid var(--border-light);
   padding: 12px 0;
   overflow: hidden;
-  animation: slideDown 0.2s ease-out;
+  animation: slideDown 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @keyframes slideDown {
@@ -113,20 +210,19 @@
 }
 
 .menu-item, .menu-item-bold {
-  padding: 12px 20px;
-  font-size: 15px;
+  padding: 12px 24px;
+  font-size: 14px;
   transition: all 0.2s;
+  color: var(--text-primary);
 }
 
 .menu-item:hover, .menu-item-bold:hover {
   background-color: var(--bg-secondary);
   color: var(--primary);
-  padding-left: 24px;
 }
 
 .menu-item-bold {
-  font-weight: 700;
-  color: var(--secondary);
+  font-weight: 600;
 }
 
 .menu-divider {
@@ -134,3 +230,50 @@
   background-color: var(--border-light);
   margin: 12px 0;
 }
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .navbar {
+    height: 70px;
+  }
+  
+  .navbar-container {
+    padding: 0 var(--spacing-md);
+  }
+  
+  .logo-text {
+    font-size: 20px;
+  }
+  
+  .navbar-user {
+    gap: var(--spacing-sm);
+  }
+  
+  .host-link {
+    display: none; /* Hide 'Become a host' text on mobile, keep it in menu */
+  }
+  
+  .user-menu-button {
+    padding: 6px 6px 6px 12px;
+  }
+  
+  .user-dropdown-menu {
+    width: 220px;
+    right: -10px;
+  }
+}
+
+@media (max-width: 450px) {
+  .logo-text {
+    display: none; /* Only show icon on very small screens */
+  }
+  
+  .navbar-container {
+    padding: 0 var(--spacing-sm);
+  }
+  
+  .user-menu-button span {
+    display: none; /* Hide user name on small screens */
+  }
+}
+

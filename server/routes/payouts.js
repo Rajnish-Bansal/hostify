@@ -12,7 +12,7 @@ const { authenticateToken } = require('../middleware/auth');
 router.get('/', authenticateToken, async (req, res) => {
   try {
     // 1. Find all listings owned by this host
-    const hostListings = await Listing.find({ host: req.user.id });
+    const hostListings = await Listing.find({ hostId: req.user.id });
     const listingIds = hostListings.map(l => l._id);
 
     // 2. Find all bookings for these listings

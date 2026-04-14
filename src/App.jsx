@@ -16,6 +16,7 @@ import AdminUsers from './pages/Admin/AdminUsers';
 import AdminListings from './pages/Admin/AdminListings';
 import AdminLogin from './pages/Admin/AdminLogin';
 import ProtectedAdminRoute from './components/atoms/ProtectedAdminRoute/ProtectedAdminRoute';
+import ProtectedRoute from './components/atoms/ProtectedRoute/ProtectedRoute';
 import { HostProvider } from './context/HostContext';
 import { BookingProvider } from './context/BookingContext';
 import { AuthProvider } from './context/AuthContext';
@@ -29,6 +30,11 @@ import Wallet from './pages/Wallet/Wallet';
 import RoomDetails from './pages/Rooms/RoomDetails';
 import Checkout from './pages/Checkout/Checkout';
 import Inbox from './pages/Inbox/Inbox';
+import PrivacyPolicy from './pages/Legal/PrivacyPolicy';
+import Terms from './pages/Legal/Terms';
+import RefundPolicy from './pages/Legal/RefundPolicy';
+import Contact from './pages/Legal/Contact';
+import About from './pages/Legal/About';
 
 function App() {
   return (
@@ -40,15 +46,25 @@ function App() {
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/rooms/:id" element={<RoomDetails />} />
+                {/* Legal Pages */}
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/refund-policy" element={<RefundPolicy />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/about" element={<About />} />
+
+              {/* Protected Routes - Require Login */}
+              <Route element={<ProtectedRoute />}>
                 <Route path="/booking" element={<Checkout />} />
                 <Route path="/book/stays/:id" element={<Checkout />} />
                 <Route path="/profile" element={<Profile />} />
-              <Route path="/account" element={<Account />} />
-              <Route path="/wallet" element={<Wallet />} />
-              <Route path="/notifications" element={<Notifications />} />
-              <Route path="/bookings" element={<Bookings />} />
-              <Route path="/wishlists" element={<Wishlist />} />
-              <Route path="/inbox" element={<Inbox />} />
+                <Route path="/account" element={<Account />} />
+                <Route path="/wallet" element={<Wallet />} />
+                <Route path="/notifications" element={<Notifications />} />
+                <Route path="/bookings" element={<Bookings />} />
+                <Route path="/wishlists" element={<Wishlist />} />
+                <Route path="/inbox" element={<Inbox />} />
+              </Route>
               <Route path="/admin/login" element={<AdminLogin />} />
 
             {/* Admin Routes - Protected */}

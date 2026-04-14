@@ -6,7 +6,7 @@ import { useAuth } from '../../../context/AuthContext';
 import AuthModal from '../../molecules/AuthModal/AuthModal';
 import './Navbar.css';
 
-const Navbar = ({ onSearch, onLogoClick }) => {
+const Navbar = ({ onSearch, onLogoClick, scrolled }) => {
   const { listings } = useHost();
   const { user, logout, isAuthModalOpen, openAuthModal, closeAuthModal, allUsers } = useAuth();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -61,20 +61,34 @@ const Navbar = ({ onSearch, onLogoClick }) => {
 
   return (
     <>
-      <header className="navbar">
+      <header className={`navbar ${scrolled ? 'scrolled' : ''}`}>
         <div className="navbar-container">
           {/* Logo */}
           <div className="navbar-logo">
             <Link 
               to="/" 
-              style={{ textDecoration: 'none' }}
+              className="logo-wrapper"
               onClick={() => {
                 if (onLogoClick) onLogoClick();
               }}
             >
+               <span className="logo-icon">🌿</span>
                <span className="logo-text">Hostify</span>
             </Link>
+            <span className="navbar-made-in-india"><span>🇮🇳</span> Made in India</span>
           </div>
+
+          {/* Search Pill - Only visible on scroll */}
+          {scrolled && (
+            <div className="navbar-search-pill" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+              <div className="search-pill-content">
+                <span className="pill-text">Anywhere • Any week • Add guests</span>
+                <div className="pill-search-icon">
+                  <Menu size={12} className="pill-icon-inner" />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* User Menu */}
           <div className="navbar-user">
@@ -95,7 +109,6 @@ const Navbar = ({ onSearch, onLogoClick }) => {
             <Link to="/notifications" className="globe-button" style={{ marginLeft: '8px', cursor: 'pointer', color: 'inherit', textDecoration: 'none', padding: '12px' }}>
                <span style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                  <Bell size={18} />
-                 <span style={{ position: 'absolute', top: '-2px', right: '-1px', width: '8px', height: '8px', backgroundColor: 'var(--primary)', borderRadius: '50%', border: '1px solid white' }}></span>
                </span>
             </Link>
 

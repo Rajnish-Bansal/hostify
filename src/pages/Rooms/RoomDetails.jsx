@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { Share, Heart, Star, MapPin, Wifi, Car, Utensils, Monitor, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
@@ -11,11 +11,13 @@ import { useSearch } from '../../context/SearchContext';
 import { fetchListingById } from '../../services/api';
 import { differenceInDays, format } from 'date-fns';
 import { Helmet } from 'react-helmet-async';
+import MapView from '../../components/molecules/MapView/MapView';
 import './RoomDetails.css';
 
 const RoomDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, openAuthModal } = useAuth();
   const { listings: hostListings } = useHost();
   const { addToRecentlyViewed } = useSearch();
@@ -30,14 +32,21 @@ const RoomDetails = () => {
         // Try to find in host listings first (local state)
         const localListing = hostListings.find(l => (l._id || l.id) == id);
         if (localListing) {
-          setListing(localListing);
+          setListing({
+            ...localListing,
+            image: localListing.image || (localListing.photos && localListing.photos[0])
+          });
           setLoading(false);
           return;
         }
 
         // Otherwise fetch from API
         const data = await fetchListingById(id);
-        setListing(data);
+        const normalizedData = {
+          ...data,
+          image: data.image || (data.photos && data.photos[0])
+        };
+        setListing(normalizedData);
       } catch (err) {
         console.error("Failed to fetch listing details:", err);
       } finally {
@@ -67,6 +76,14 @@ const RoomDetails = () => {
   const [guests, setGuests] = useState({ adults: 1, children: 0 });
   const [showGuestSelector, setShowGuestSelector] = useState(false);
   const guestSelectorRef = useRef(null);
+  const mapRef = useRef(null);
+
+  // Pending reserve: set when user clicks Reserve but isn't logged in yet
+  const [pendingReserve, setPendingReserve] = useState(false);
+
+  const scrollToMap = () => {
+    mapRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -78,9 +95,65 @@ const RoomDetails = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Auto-complete reserve after login
+  useEffect(() => {
+    if (user && pendingReserve && listing) {
+      setPendingReserve(false);
+      navigate('/booking', {
+        state: {
+          listing,
+          startDate,
+          endDate,
+          guests,
+          totalPrice: priceStats?.totalPrice,
+          nights
+        }
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, pendingReserve]);
+
   // Reviews State
   const [showAllReviews, setShowAllReviews] = useState(false);
-  const displayedReviews = showAllReviews ? listing?.reviews : listing?.reviews?.slice(0, 6);
+  
+  // Inject mock reviews for demo purposes if listing has reviewsCount but empty list
+  const getAugmentedReviews = () => {
+    if (!listing) return [];
+    if (listing.reviews && listing.reviews.length > 0) return listing.reviews;
+    
+    if (listing.reviewsCount > 0) {
+      return [
+        {
+          id: 'mock1',
+          user: 'Sarah Miller',
+          date: 'March 2024',
+          avatar: 'https://i.pravatar.cc/150?u=sarah',
+          comment: 'This place is exactly as pictured. Very clean and the view is spectacular. The host was very responsive and check-in was a breeze.',
+          ratings: { cleanliness: 5, accuracy: 5, communication: 5, location: 5, checkin: 5, value: 5 }
+        },
+        {
+          id: 'mock2',
+          user: 'James Wilson',
+          date: 'February 2024',
+          avatar: 'https://i.pravatar.cc/150?u=james',
+          comment: 'Excellent stay! The location is perfect for exploring. Beds were comfortable and the wifi was fast enough for my remote work.',
+          ratings: { cleanliness: 5, accuracy: 4, communication: 5, location: 5, checkin: 5, value: 4 }
+        },
+        {
+          id: 'mock3',
+          user: 'Priya Sharma',
+          date: 'January 2024',
+          avatar: 'https://i.pravatar.cc/150?u=priya',
+          comment: 'Beautiful apartment with everything we needed. We loved sitting on the balcony in the evenings. Definitely recommended for a peaceful getaway.',
+          ratings: { cleanliness: 4, accuracy: 5, communication: 5, location: 4, checkin: 5, value: 5 }
+        }
+      ];
+    }
+    return [];
+  };
+
+  const reviewsToDisplay = getAugmentedReviews();
+  const displayedReviews = showAllReviews ? reviewsToDisplay : reviewsToDisplay.slice(0, 6);
 
   if (loading) return <div className="loading-container">Loading property details...</div>;
   if (!listing) return <div className="error-container">Property not found</div>;
@@ -120,15 +193,20 @@ const RoomDetails = () => {
     }
 
     const totalBasePrice = subtotal - discountAmount;
-    const serviceFee = Math.round(totalBasePrice * 0.14);
-    const totalPrice = totalBasePrice + serviceFee;
+    
+    // GST Logic: 5% if below 7500, 18% otherwise
+    const gstRate = listing.price < 7500 ? 0.05 : 0.18;
+    const gstAmount = Math.round(totalBasePrice * gstRate);
+    
+    const totalPrice = totalBasePrice + gstAmount;
 
     return { 
         subtotal, 
         discountAmount, 
         discountBadge, 
         totalBasePrice, 
-        serviceFee, 
+        gstAmount, 
+        gstPercentage: Math.round(gstRate * 100),
         totalPrice,
         weekendNights,
         weekdayNights
@@ -141,7 +219,7 @@ const RoomDetails = () => {
   const guestLabel = `${totalGuests} guest${totalGuests > 1 ? 's' : ''}`;
 
   const calculateReviewCategories = () => {
-    if (!listing?.reviews || listing.reviews.length === 0) return null;
+    if (!reviewsToDisplay || reviewsToDisplay.length === 0) return null;
     
     const totals = {
       cleanliness: 0,
@@ -152,7 +230,7 @@ const RoomDetails = () => {
       value: 0
     };
 
-    listing.reviews.forEach(r => {
+    reviewsToDisplay.forEach(r => {
       const rt = r.ratings || { cleanliness: 5, accuracy: 5, communication: 5, location: 5, checkin: 5, value: 5 };
       totals.cleanliness += rt.cleanliness || 5;
       totals.accuracy += rt.accuracy || 5;
@@ -162,7 +240,7 @@ const RoomDetails = () => {
       totals.value += rt.value || 5;
     });
 
-    const count = listing.reviews.length;
+    const count = reviewsToDisplay.length;
     return {
       cleanliness: (totals.cleanliness / count).toFixed(1),
       accuracy: (totals.accuracy / count).toFixed(1),
@@ -177,6 +255,7 @@ const RoomDetails = () => {
 
   const handleReserve = () => {
     if (!user) {
+      setPendingReserve(true);
       openAuthModal();
       return;
     }
@@ -187,7 +266,7 @@ const RoomDetails = () => {
         startDate,
         endDate,
         guests,
-        totalPrice,
+        totalPrice: priceStats.totalPrice,
         nights
       }
     });
@@ -196,7 +275,7 @@ const RoomDetails = () => {
   return (
     <div className="room-details">
       <Helmet>
-        <title>{`${listing.propertyType || 'Stay'} in ${listing.location} - ${listing.title}`}</title>
+        <title>{listing.title ? `${listing.propertyType || 'Stay'} in ${listing.location} - ${listing.title}` : `Hostify | ${listing.propertyType || 'Stay'} in ${listing.location}`}</title>
         <meta name="description" content={listing.description} />
         <meta property="og:title" content={`${listing.propertyType} in ${listing.location}`} />
         <meta property="og:description" content={listing.description} />
@@ -205,11 +284,21 @@ const RoomDetails = () => {
       </Helmet>
       <Navbar />
       <div className="room-content">
-        {/* Back Button */}
-        <button className="back-button" onClick={() => navigate(-1)}>
-          <ArrowLeft size={20} />
-          <span>Back to results</span>
-        </button>
+        {location.state?.fromHost ? (
+          <Link 
+            to="/become-a-host/dashboard?tab=listings" 
+            className="back-button"
+            style={{ textDecoration: 'none' }}
+          >
+            <ArrowLeft size={20} />
+            <span>Back</span>
+          </Link>
+        ) : (
+          <button className="back-button" onClick={() => navigate(-1)}>
+            <ArrowLeft size={20} />
+            <span>Back</span>
+          </button>
+        )}
         {/* Title Header */}
         <h1 className="room-title">{listing.title || `Stunning stay in ${listing.location}`}</h1>
         <div className="room-header-meta">
@@ -219,7 +308,19 @@ const RoomDetails = () => {
             <span className="dot">·</span>
             <span className="reviews-link">{listing.reviewsCount} reviews</span>
             <span className="dot">·</span>
-            <span className="location-link">{listing.location}</span>
+            <button 
+              className="location-link-btn" 
+              onClick={scrollToMap}
+            >
+              {listing.location}
+            </button>
+            <span className="dot">·</span>
+            <button 
+              className="view-on-map-link"
+              onClick={scrollToMap}
+            >
+              View on map
+            </button>
           </div>
           <div className="right-actions">
             <button className="action-btn"><Share size={16} /> Share</button>
@@ -298,9 +399,6 @@ const RoomDetails = () => {
                     <div className="price-tag">
                        <span className="price-large">₹{listing.price.toLocaleString('en-IN')}</span> <span className="night-text">night</span>
                     </div>
-                    <div className="card-rating">
-                       <Star size={12} fill="black" /> {listing.rating} · <span className="reviews-grey">{listing.reviewsCount} reviews</span>
-                    </div>
                  </div>
 
                  <div className="date-picker-box">
@@ -369,28 +467,23 @@ const RoomDetails = () => {
                         </div>
                      )}
                      <div className="pb-row">
-                        <span>Service fee</span>
-                        <span>₹{priceStats.serviceFee.toLocaleString('en-IN')}</span>
+                        <span>GST ({priceStats.gstPercentage}%)</span>
+                        <span>₹{priceStats.gstAmount.toLocaleString('en-IN')}</span>
                      </div>
                   </div>
 
                   <div className="total-row">
-                     <span>Total before taxes</span>
+                     <span>Total (incl. taxes)</span>
                      <span>₹{priceStats.totalPrice.toLocaleString('en-IN')}</span>
                   </div>
               </div>
            </div>
         </div>
 
-        <div className="divider"></div>
+         <div className="divider"></div>
 
         {/* Reviews Section */}
         <div className="reviews-section">
-           <div className="reviews-summary-header">
-              <Star size={20} fill="black" />
-              {listing.rating} · {listing.reviewsCount} reviews
-           </div>
-
            {reviewStats && (
               <div className="review-categories-grid">
                  {Object.entries(reviewStats).map(([key, value]) => (
@@ -431,7 +524,7 @@ const RoomDetails = () => {
               )}
            </div>
 
-           {listing.reviews && listing.reviews.length > 6 && (
+           {reviewsToDisplay && reviewsToDisplay.length > 6 && (
              <button 
                className="show-more-reviews"
                onClick={() => setShowAllReviews(!showAllReviews)}
@@ -450,7 +543,32 @@ const RoomDetails = () => {
              </button>
            )}
         </div>
+
+
+         {/* Map Section */}
+         <div className="location-section" ref={mapRef}>
+            <h2 className="section-subtitle">Where you'll be</h2>
+            <div className="location-info">
+               <div className="location-text">
+                  <h3>{listing.location || listing.city}</h3>
+                  <p className="secondary-text">
+                     {listing.neighborhoodDescription || "This property is located in a vibrant and safe neighborhood, offering a perfect blend of convenience and local character. Exact location details will be shared after your booking is confirmed."}
+                  </p>
+               </div>
+            </div>
+            
+            <MapView listings={[listing]} isSingle={true} />
+            
+            <div className="location-security-notice">
+               <div className="security-icon">🛡️</div>
+               <div className="security-text">
+                  <h4>Getting here</h4>
+                  <p>Detailed check-in instructions and exact address are shared 48 hours before arrival for safety.</p>
+               </div>
+            </div>
+         </div>
       </div>
+        <div className="divider"></div>
     </div>
   );
 };

@@ -10,9 +10,11 @@ const ConfirmationModal = ({ isOpen, title, message, onConfirm, onCancel, confir
         <h3 className="modal-title">{title}</h3>
         <p className="modal-message">{message}</p>
         <div className="modal-actions">
-          <button className="btn-cancel" onClick={onCancel}>
-            {cancelText}
-          </button>
+          {onCancel && (
+            <button className="btn-cancel" onClick={onCancel}>
+              {cancelText}
+            </button>
+          )}
           <button 
             className={`btn-confirm ${isDestructive ? 'destructive' : ''}`}
             onClick={onConfirm}

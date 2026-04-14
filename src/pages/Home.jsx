@@ -14,6 +14,93 @@ import { fetchListings } from '../services/api';
 import { Link } from 'react-router-dom';
 import { Sliders, Map, List } from 'lucide-react';
 import { useSearch } from '../context/SearchContext';
+import Footer from '../components/organisms/Footer/Footer';
+
+const DUMMY_LISTINGS = [
+  {
+    _id: "1700001",
+    location: "Phuket, Thailand",
+    distance: "2,400 km away",
+    price: 12500,
+    rating: 4.85,
+    reviewsCount: 124,
+    photos: ["https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1000&auto=format&fit=crop"],
+    title: "The Oak Street Loft",
+    propertyType: "Apartment",
+    maxGuests: 4,
+    priceRange: [0, 50000],
+    coordinates: { lat: 7.8804, lng: 98.3923 }
+  },
+  {
+    _id: "1700002",
+    location: "Bali, Indonesia",
+    distance: "1,200 km away",
+    price: 18500,
+    rating: 4.92,
+    reviewsCount: 86,
+    photos: ["https://images.unsplash.com/photo-1510017803434-a899398421b3?w=1000&auto=format&fit=crop"],
+    title: "Modern Urban Retreat",
+    propertyType: "Condo",
+    maxGuests: 2,
+    priceRange: [0, 50000],
+    coordinates: { lat: -8.4095, lng: 115.1889 }
+  },
+  {
+    _id: "1700003",
+    location: "Maldives",
+    distance: "3,100 km away",
+    price: 45000,
+    rating: 5.0,
+    reviewsCount: 210,
+    photos: ["https://images.unsplash.com/photo-1544124499-58912cbddaad?w=1000&auto=format&fit=crop"],
+    title: "Serene Coastal Villa",
+    propertyType: "Villa",
+    maxGuests: 2,
+    priceRange: [0, 50000],
+    coordinates: { lat: 3.2028, lng: 73.2207 }
+  },
+  {
+    _id: "1700004",
+    location: "Koh Samui, Thailand",
+    distance: "2,600 km away",
+    price: 22000,
+    rating: 4.75,
+    reviewsCount: 156,
+    photos: ["https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=1000&auto=format&fit=crop"],
+    title: "Azure Bay Resort",
+    propertyType: "Resort",
+    maxGuests: 6,
+    priceRange: [0, 50000],
+    coordinates: { lat: 9.512, lng: 100.013 }
+  },
+  {
+    _id: "1700005",
+    location: "Kyoto, Japan",
+    distance: "4,500 km away",
+    price: 15000,
+    rating: 4.95,
+    reviewsCount: 56,
+    photos: ["https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=1000&auto=format&fit=crop"],
+    title: "Zen Garden Sanctuary",
+    propertyType: "House",
+    maxGuests: 3,
+    priceRange: [0, 50000],
+    coordinates: { lat: 35.0116, lng: 135.7681 }
+  },
+  {
+    _id: "1700006",
+    location: "Oia, Greece",
+    distance: "6,200 km away",
+    price: 32000,
+    rating: 4.88,
+    reviewsCount: 89,
+    photos: ["https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=1000&auto=format&fit=crop"],
+    title: "Santorini Sunset Edge",
+    propertyType: "Villa",
+    maxGuests: 5,
+    priceRange: [0, 50000]
+  }
+];
 
 const Home = () => {
   const [allListings, setAllListings] = React.useState([]);
@@ -22,17 +109,39 @@ const Home = () => {
   const [searchKey, setSearchKey] = React.useState(0);
   const [showFilters, setShowFilters] = React.useState(false);
   const [showMap, setShowMap] = React.useState(false);
+  const [isScrolled, setIsScrolled] = React.useState(false);
   const { filters, recentlyViewed, searchParams, updateSearchParams, updateFilters } = useSearch();
   
+  // Handle Scroll Morph
+  React.useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 80) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   // Fetch listings on mount
   React.useEffect(() => {
     const getListings = async () => {
       try {
         const data = await fetchListings();
-        setAllListings(data);
-        setFilteredListings(data);
+        if (data && data.length > 0) {
+          setAllListings(data);
+          setFilteredListings(data);
+        } else {
+          // Fallback to dummy data for design demo if API is empty
+          setAllListings(DUMMY_LISTINGS);
+          setFilteredListings(DUMMY_LISTINGS);
+        }
       } catch (err) {
-        console.error("Failed to fetch listings:", err);
+        console.error("Failed to fetch listings, using fallback:", err);
+        setAllListings(DUMMY_LISTINGS);
+        setFilteredListings(DUMMY_LISTINGS);
       } finally {
         setLoading(false);
       }
@@ -40,12 +149,7 @@ const Home = () => {
     getListings();
   }, []);
 
-  // Automatically hide map when search is cleared
-  React.useEffect(() => {
-    if (!searchParams.destination && showMap) {
-      setShowMap(false);
-    }
-  }, [searchParams.destination, showMap]);
+
 
   // Sync filtered listings with context on mount and when filters/params change
   React.useEffect(() => {
@@ -60,6 +164,7 @@ const Home = () => {
   const applyFilters = (searchParams, currentFilters) => {
     const { destination, guests, startDate, endDate } = searchParams;
     
+    console.log('[Home] Applying filters:', { searchParams, currentFilters });
     let filtered = [...allListings];
 
     // Filter by Destination
@@ -140,6 +245,7 @@ const Home = () => {
   };
 
   return (
+    <>
     <div className="home-container">
       <Helmet>
         <title>Hostify - Find your next home away from home</title>
@@ -147,42 +253,38 @@ const Home = () => {
         <meta property="og:title" content="Hostify - Premium Vacation Rentals" />
         <meta property="og:image" content="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200&auto=format&fit=crop" />
       </Helmet>
-      <Navbar onSearch={handleSearch} onLogoClick={handleReset} />
-      <div style={{ paddingTop: '80px' }}>
-        <HeroSearch key={searchKey} onSearch={handleSearch} allLocations={allLocations} />
+      
+      <Navbar onSearch={handleSearch} onLogoClick={handleReset} scrolled={isScrolled} />
+      
+      <div className={`hero-search-wrapper ${isScrolled ? 'scrolled' : ''}`}>
+        <div className="compact-search-container">
+          <HeroSearch key={searchKey} onSearch={handleSearch} allLocations={allLocations} />
+        </div>
       </div>
 
-      {/* ========== OPTION 2: Filter Chips with Modal Panel ========== */}
-      <main className="main-content" style={{ paddingTop: '10px' }}>
-        {/* Filter Button */}
-        <div className="filter-bar">
-          <div className="filter-left">
-            <button className="filter-trigger-btn" onClick={() => setShowFilters(true)}>
+      <div className="sticky-sub-navbar">
+        <div className="sub-navbar-container justify-end">
+          <div className="sub-navbar-filters">
+            <button className="filter-trigger-btn elevate" onClick={() => setShowFilters(true)}>
               <Sliders size={18} />
               Filters
             </button>
-            {searchParams.destination && (
-              <button 
-                className={`view-toggle-btn ${showMap ? 'active' : ''}`}
-                onClick={() => setShowMap(!showMap)}
-              >
-                {showMap ? (
-                  <>
-                    <List size={18} />
-                    Show list
-                  </>
-                ) : (
-                  <>
-                    <Map size={18} />
-                    Show map
-                  </>
-                )}
-              </button>
-            )}
           </div>
-          <div className="results-count">
-            {filteredListings.length} {filteredListings.length === 1 ? 'property' : 'properties'} found
+        </div>
+      </div>
+
+      <main className="main-content">
+        {/* Results Header */}
+        <div className="results-header">
+          <div className="results-info">
+            <h2 className="section-title">
+              {searchParams.destination ? `Stays in ${searchParams.destination}` : 'Recently added properties'}
+            </h2>
+            <div className="results-count">
+              {filteredListings.length} {filteredListings.length === 1 ? 'property' : 'properties'} found
+            </div>
           </div>
+          
         </div>
 
         {/* Active Filter Chips */}
@@ -197,9 +299,13 @@ const Home = () => {
               const listingId = listing._id || listing.id;
               const isRecentlyViewed = recentlyViewed.some(item => (item._id || item.id) === listingId);
               return (
-                <Link to={`/rooms/${listingId}`} key={listingId} style={{textDecoration: 'none', color: 'inherit', display: 'block'}}>
-                  <ListingCard {...listing} id={listingId} isRecentlyViewed={isRecentlyViewed} />
-                </Link>
+                <ListingCard 
+                  key={listingId}
+                  {...listing} 
+                  image={listing.image || (listing.photos && listing.photos[0])}
+                  id={listingId} 
+                  isRecentlyViewed={isRecentlyViewed} 
+                />
               );
             })}
           </div>
@@ -234,7 +340,26 @@ const Home = () => {
         </main>
       </div>
       */}
+      {/* Floating Toggle Button */}
+      <button 
+        className={`view-toggle-btn floating-toggle ${showMap ? 'active' : ''}`}
+        onClick={() => setShowMap(!showMap)}
+      >
+        {showMap ? (
+          <>
+            <List size={18} />
+            <span>Show list</span>
+          </>
+        ) : (
+          <>
+            <Map size={18} />
+            <span>Show map</span>
+          </>
+        )}
+      </button>
     </div>
+    <Footer />
+    </>
   );
 };
 

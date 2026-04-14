@@ -85,7 +85,7 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
   return (
     <div className="hero-search-container" ref={containerRef}>
       <div className="hero-search">
-        {/* Where */}
+        {/* Location */}
         <div 
             className={`hero-search-group ${activeField === 'destination' ? 'active' : ''}`}
             onClick={() => {
@@ -93,10 +93,10 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
                 setShowGuestPopover(false);
             }}
         >
-          <label>Where</label>
+          <label>Location</label>
           <input 
             type="text" 
-            placeholder="Search destinations" 
+            placeholder="Bali, Indonesia" 
             value={destination}
             onChange={(e) => {
                 const val = e.target.value;
@@ -141,7 +141,7 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
         
         <div className="hero-divider"></div>
         
-        {/* When - DatePicker */}
+        {/* Date In */}
         <div 
             className={`hero-search-group ${activeField === 'dates' ? 'active' : ''}`}
             onClick={() => {
@@ -149,7 +149,7 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
                 setShowGuestPopover(false);
             }}
         >
-          <label>When</label>
+          <label>Check In</label>
           <div className="datepicker-wrapper">
               <DatePicker
                 selectsRange={true}
@@ -164,18 +164,39 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
                 onFocus={() => setActiveField('dates')}
                 customInput={
                     <input 
-                        value={startDate ? `${startDate.toLocaleDateString()} - ${endDate ? endDate.toLocaleDateString() : ''}` : ''} 
+                        value={startDate ? startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''} 
                         readOnly 
-                        placeholder="Add dates"
+                        placeholder="08 Nov 2024"
                     />
                 }
                />
           </div>
         </div>
+
+        <div className="hero-divider"></div>
+
+        {/* Date Out */}
+        <div 
+            className={`hero-search-group ${activeField === 'dates-out' ? 'active' : ''}`}
+            onClick={() => {
+                setActiveField('dates');
+                setShowGuestPopover(false);
+            }}
+        >
+          <label>Check Out</label>
+          <div className="datepicker-wrapper">
+              <input 
+                  value={endDate ? endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''} 
+                  readOnly 
+                  placeholder="12 Nov 2024"
+                  onClick={() => setActiveField('dates')}
+              />
+          </div>
+        </div>
         
         <div className="hero-divider"></div>
         
-        {/* Who - Guest Counter */}
+        {/* Room/Guests */}
         <div 
             className={`hero-search-group ${activeField === 'guests' ? 'active' : ''}`}
             onClick={() => {
@@ -183,9 +204,9 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
                 setShowGuestPopover(true);
             }}
         >
-          <label>Who</label>
+          <label>Guests</label>
           <div style={{ fontSize: '14px', fontWeight: 500, color: totalGuests > 0 ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
-              {totalGuests > 0 ? `${totalGuests} guest${totalGuests > 1 ? 's' : ''}` : 'Add guests'}
+              {totalGuests > 0 ? `${totalGuests} Guest${totalGuests > 1 ? 's' : ''}` : '1 Guest'}
           </div>
         </div>
 
@@ -193,7 +214,8 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
             e.stopPropagation();
             handleSearchClick();
         }}>
-          <Search size={18} strokeWidth={2.5} color="white" />
+          <Search size={22} strokeWidth={2.5} color="white" />
+          <span className="search-btn-text">Search</span>
         </button>
 
           {/* Guest Popover */}

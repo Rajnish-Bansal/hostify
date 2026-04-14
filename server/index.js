@@ -16,6 +16,9 @@ const { syncAllCalendars } = require('./services/syncService');
 const payoutRoutes = require('./routes/payouts');
 const analyticsRoutes = require('./routes/analytics');
 const conversationRoutes = require('./routes/conversations');
+const userRoutes = require('./routes/users');
+const transactionRoutes = require('./routes/transactions');
+const subscriptionRoutes = require('./routes/subscriptions');
 
 const Message = require('./models/Message');
 const Conversation = require('./models/Conversation');
@@ -51,6 +54,9 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/host/payouts', payoutRoutes);
 app.use('/api/host/analytics', analyticsRoutes);
 app.use('/api/conversations', conversationRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/transactions', transactionRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
 
 const { scrapeAirbnb } = require('./services/scraper');
 
@@ -87,6 +93,17 @@ app.post('/api/listings/sync', async (req, res) => {
   }
 });
 
+const { authenticateToken } = require('./middleware/auth');
+
+app.get('/api/listings/mine', authenticateToken, async (req, res) => {
+  try {
+    const listings = await Listing.find({ hostId: req.user.id }).sort({ createdAt: -1 });
+    res.json(listings);
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching your listings', error: err.message });
+  }
+});
+
 app.get('/api/listings/:id', async (req, res) => {
   try {
     const listing = await Listing.findById(req.params.id);
@@ -98,17 +115,98 @@ app.get('/api/listings/:id', async (req, res) => {
 });
 
 app.put('/api/listings/:id/pricing', async (req, res) => {
-  const { weekendPrice, discounts } = req.body;
+  const { price, weekendPrice, discounts } = req.body;
   try {
     const listing = await Listing.findByIdAndUpdate(
       req.params.id,
-      { weekendPrice, discounts },
+      { price, weekendPrice, discounts },
       { new: true }
     );
     if (!listing) return res.status(404).json({ message: 'Listing not found' });
     res.json(listing);
   } catch (err) {
     res.status(500).json({ message: 'Error updating pricing', error: err.message });
+  }
+});
+
+app.put('/api/listings/:id/price-overrides', authenticateToken, async (req, res) => {
+  const { startDate, endDate, price } = req.body;
+  try {
+    const listing = await Listing.findById(req.params.id);
+    if (!listing) return res.status(404).json({ message: 'Listing not found' });
+    
+    // Security: Check if user owns listing
+    if (!listing.hostId || listing.hostId.toString() !== req.user.id) {
+      console.warn(`[Backend] Unauthorized price-override attempt by user ${req.user.id} on listing ${req.params.id}`);
+      return res.status(403).json({ message: 'Unauthorized to modify this listing' });
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    // 1. Remove existing overrides within this range
+    listing.priceOverrides = listing.priceOverrides.filter(ov => {
+      const d = new Date(ov.date);
+      return d < start || d > end;
+    });
+
+    // 2. Add new overrides for each day in range
+    let current = new Date(start);
+    while (current <= end) {
+      listing.priceOverrides.push({
+        date: new Date(current),
+        price: Number(price)
+      });
+      current.setDate(current.getDate() + 1);
+    }
+
+    await listing.save();
+    res.json(listing);
+  } catch (err) {
+    console.error(`[Backend] Price-override failed:`, err);
+    res.status(500).json({ message: 'Error updating price overrides', error: err.message });
+  }
+});
+
+app.put('/api/listings/:id/blocked-dates', authenticateToken, async (req, res) => {
+  const { dates } = req.body; // Array of ISO strings
+  try {
+    const listing = await Listing.findById(req.params.id);
+    if (!listing) return res.status(404).json({ message: 'Listing not found' });
+
+    if (!listing.hostId || listing.hostId.toString() !== req.user.id) {
+       console.warn(`[Backend] Unauthorized block-dates attempt by user ${req.user.id} on listing ${req.params.id}`);
+       return res.status(403).json({ message: 'Unauthorized' });
+    }
+
+    // Toggle logic: If the date is already blocked, UNBLOCK it. If not, BLOCK it.
+    if (!Array.isArray(dates)) return res.status(400).json({ message: 'Dates must be an array' });
+
+    const newDates = dates.map(d => {
+      const date = new Date(d);
+      date.setHours(0,0,0,0);
+      return date;
+    });
+
+    // Toggle logic
+    newDates.forEach(nd => {
+      const ndStr = nd.toISOString();
+      const index = listing.blockedDates.findIndex(d => d.toISOString() === ndStr);
+      
+      if (index > -1) {
+        // Already blocked -> UNBLOCK (Remove)
+        listing.blockedDates.splice(index, 1);
+      } else {
+        // Not blocked -> BLOCK (Add)
+        listing.blockedDates.push(nd);
+      }
+    });
+
+    await listing.save();
+    res.json(listing);
+  } catch (err) {
+    console.error(`[Backend] Block-dates failed:`, err);
+    res.status(500).json({ message: 'Error blocking dates', error: err.message });
   }
 });
 
@@ -157,6 +255,7 @@ const io = new Server(httpServer, {
     methods: ['GET', 'POST']
   }
 });
+app.set('io', io);
 
 // --- Socket.io Events ---
 io.on('connection', (socket) => {
@@ -168,29 +267,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('send_message', async (data) => {
-    // data: { conversationId, senderId, text, timestamp }
-    try {
-      // 1. Persist to Message model
-      const newMessage = new Message({
-        conversationId: data.conversationId,
-        sender: data.senderId,
-        text: data.text,
-        timestamp: data.timestamp
-      });
-      await newMessage.save();
-
-      // 2. Update last message in Conversation
-      await Conversation.findByIdAndUpdate(data.conversationId, {
-        lastMessage: data.text,
-        updatedAt: new Date()
-      });
-
-      // 3. Emit to clients in the room
-      io.to(data.conversationId).emit('receive_message', data);
-      console.log(`[Socket] Message saved & emitted in ${data.conversationId}: ${data.text}`);
-    } catch (err) {
-      console.error('[Socket] Error saving message:', err.message);
-    }
+    // legacy socket-based sending - just for real-time if not using API
+    console.log('[Socket] send_message received. Broadcasting only.');
+    io.to(data.conversationId).emit('receive_message', data);
   });
 
   socket.on('disconnect', () => {

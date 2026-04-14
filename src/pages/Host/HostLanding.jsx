@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Sparkles, Home, ChevronRight, X } from 'lucide-react';
 import { useHost } from '../../context/HostContext';
-import { Sparkles, Home } from 'lucide-react';
 import './HostLanding.css';
-import './HostStep1.css'; // Borrow global aesthetic styles
+import hostHero from '../../assets/host_hero.png';
 
 const HostLanding = () => {
   const { listings, importAirbnbListing } = useHost();
@@ -34,53 +34,76 @@ const HostLanding = () => {
   };
 
   return (
-    <div className="host-landing-container aesthetic-bg" style={{ minHeight: 'calc(100vh - 80px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-      <div className="host-landing-content" style={{ textAlign: 'center', maxWidth: '800px' }}>
-        <header className="pricing-header">
-           <Sparkles className="header-decoration" />
-           <h1 className="step-title" style={{ fontSize: '72px', fontWeight: '900', letterSpacing: '-3px', marginBottom: '16px' }}>Hostify it.</h1>
-           <p className="step-subheading" style={{ fontSize: '28px', color: '#222', marginBottom: '60px', opacity: 0.8 }}>You could earn extra income hosting your place.</p>
-        </header>
+    <div className="host-landing-container">
+      {/* Hero Section */}
+      <section className="host-hero-section">
+        <div className="hero-background">
+          <img src={hostHero} alt="Luxury Cabin" />
+          <div className="hero-overlay"></div>
+        </div>
         
-        <div className="onboarding-options" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+        <div className="hero-content">
+          <h1 className="hero-title">Hostify it.</h1>
+          <p className="hero-subtitle">Turn your space into a premium retreat and start earning.</p>
+        </div>
+      </section>
+
+      {/* Onboarding Options */}
+      <section className="onboarding-options-section">
+        <div className="options-grid">
           {/* Manual Setup */}
-          <Link to="/become-a-host/step1" className="setup-card manual-setup" style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '32px', borderRadius: '24px', textDecoration: 'none', background: 'rgba(15, 23, 42, 0.05)', border: '1.5px solid rgba(15, 23, 42, 0.1)', transition: 'all 0.3s ease' }}>
-            <div className="setup-icon-wrapper" style={{ background: 'var(--secondary)', color: 'white', padding: '16px', borderRadius: '16px' }}>
+          <Link to="/become-a-host/step1" className="premium-setup-card manual-setup">
+            <div className="card-icon-wrapper">
               <Home size={32} />
             </div>
-            <div className="setup-text" style={{ textAlign: 'left' }}>
-              <span className="setup-title" style={{ display: 'block', fontSize: '22px', fontWeight: '800', color: 'var(--secondary)' }}>Hostify Setup</span>
-              <span className="setup-desc" style={{ fontSize: '15px', color: 'var(--text-secondary)' }}>Start your hosting journey manually.</span>
+            <div className="card-text">
+              <h3>Hostify Setup</h3>
+              <p>Craft your perfect listing manually with our expert guidance and best-in-class tools.</p>
+            </div>
+            <div className="card-action-hint">
+              Start manual setup <ChevronRight size={18} />
             </div>
           </Link>
 
           {/* Magic Import */}
-          <div className="setup-card magic-setup" onClick={() => setIsModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '20px', padding: '32px', borderRadius: '24px', cursor: 'pointer', background: 'white', border: '1.5px solid var(--primary)', boxShadow: '0 10px 30px rgba(245, 158, 11, 0.15)', transition: 'all 0.3s ease' }}>
-            <div className="setup-icon-wrapper" style={{ background: 'var(--primary)', color: 'var(--secondary)', padding: '16px', borderRadius: '16px' }}>
+          <div className="premium-setup-card magic-setup" onClick={() => setIsModalOpen(true)}>
+            <div className="card-icon-wrapper">
               <Sparkles size={32} />
             </div>
-            <div className="setup-text" style={{ textAlign: 'left' }}>
-              <span className="setup-title" style={{ display: 'block', fontSize: '22px', fontWeight: '800', color: 'var(--secondary)' }}>Magic Import</span>
-              <span className="setup-desc" style={{ fontSize: '15px', color: 'var(--text-secondary)' }}>Onboard instantly from an Airbnb link.</span>
+            <div className="card-text">
+              <h3>Magic Import</h3>
+              <p>Coming from Airbnb? Onboard instantly by importing your existing listing details in one click.</p>
+            </div>
+            <div className="card-action-hint">
+              Try magic import <ChevronRight size={18} />
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Magic Import Modal */}
       {isModalOpen && (
-        <div className="import-modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
-          <div className="import-modal-content" style={{ background: 'white', width: '90%', maxWidth: '500px', borderRadius: '32px', padding: '48px', position: 'relative', textAlign: 'center' }}>
-            <button className="close-btn" onClick={() => setIsModalOpen(false)} style={{ position: 'absolute', top: '24px', right: '24px', background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: 'var(--text-secondary)' }}>&times;</button>
+        <div className="import-modal-overlay">
+          <div className="import-modal-content">
+            <button className="close-btn-modal" onClick={() => setIsModalOpen(false)} style={{ position: 'absolute', top: '32px', right: '32px', background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
+              <X size={24} />
+            </button>
             
-            <Sparkles size={48} style={{ color: 'var(--primary)', marginBottom: '24px' }} />
-            <h2 style={{ fontSize: '32px', fontWeight: '800', marginBottom: '12px' }}>Magic Import</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '32px' }}>Paste your Airbnb listing URL to instantly populate your Hostify property.</p>
+            <div className="modal-header-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
+              <div style={{ background: '#fff7ed', color: '#f97316', padding: '20px', borderRadius: '24px' }}>
+                <Sparkles size={40} />
+              </div>
+            </div>
+            
+            <h2 style={{ fontSize: '32px', fontWeight: '800', marginBottom: '16px', color: '#0f172a' }}>Magic Import</h2>
+            <p style={{ color: '#64748b', fontSize: '16px', marginBottom: '40px', lineHeight: '1.6' }}>
+              Paste your Airbnb listing URL below. Our AI will handle the rest, syncing your photos, description, and amenities.
+            </p>
 
             {isImporting ? (
-              <div className="importing-state" style={{ padding: '24px 0' }}>
-                <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid #f3f3f3', borderTop: '4px solid var(--primary)', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }}></div>
-                <p style={{ fontWeight: '600' }}>Magically importing details...</p>
+              <div className="importing-state">
+                <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid #f3f3f3', borderTop: '4px solid #f97316', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 20px' }}></div>
+                <p style={{ fontWeight: '600', color: '#0f172a' }}>Synthesizing listing data...</p>
                 <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
               </div>
             ) : (
@@ -90,15 +113,16 @@ const HostLanding = () => {
                   placeholder="https://www.airbnb.com/rooms/..." 
                   value={airbnbUrl}
                   onChange={(e) => setAirbnbUrl(e.target.value)}
-                  style={{ width: '100%', padding: '20px', borderRadius: '16px', border: '2px solid var(--border-light)', marginBottom: '16px', fontSize: '16px' }}
+                  className="modal-input"
                 />
-                {error && <p style={{ color: '#ef4444', fontSize: '14px', marginBottom: '16px' }}>{error}</p>}
+                {error && <p style={{ color: '#ef4444', fontSize: '14px', marginBottom: '20px', fontWeight: '500' }}>{error}</p>}
                 <button 
                   onClick={handleImport}
                   disabled={!airbnbUrl}
-                  style={{ width: '100%', padding: '20px', borderRadius: '16px', border: 'none', background: 'var(--secondary)', color: 'white', fontWeight: '800', fontSize: '18px', cursor: 'pointer', opacity: airbnbUrl ? 1 : 0.6 }}
+                  className="btn-magic-start"
+                  style={{ opacity: airbnbUrl ? 1 : 0.6 }}
                 >
-                  Start Magic Import
+                  Confirm & Sync
                 </button>
               </div>
             )}

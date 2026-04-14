@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import { fetchMyListings } from '../services/api';
 
 const HostContext = createContext();
 
@@ -129,76 +130,114 @@ const getInitialListings = () => {
     {
       id: 1700001,
       hostId: 1,
-      title: "Cozy Apartment in Connaught Place",
-      type: "Apartment/Flat",
-      location: "New Delhi, India",
-      price: 4500,
+      title: "The Oak Street Loft",
+      type: "Apartment",
+      location: "Phuket, Thailand",
+      price: 12500,
       status: "Active",
       rating: 4.8,
+      distance: "2,400 km away",
       reviewsCount: 12,
       createdAt: new Date(Date.now() - 86400000 * 60).toISOString(),
-      photos: ["https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60"]
+      photos: ["https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60"]
     },
     {
       id: 1700002,
       hostId: 1,
-      title: "Mountain Retreat in Manali",
-      type: "House (Standard)",
-      location: "Manali, Himachal Pradesh",
-      price: 8500,
+      title: "Modern Urban Retreat",
+      type: "Condo",
+      location: "Bali, Indonesia",
+      price: 18500,
       status: "Active",
       rating: 4.9,
+      distance: "1,200 km away",
       reviewsCount: 24,
       createdAt: new Date(Date.now() - 86400000 * 45).toISOString(),
-      photos: ["https://images.unsplash.com/photo-1449156493391-d2cfa28e468b?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60"]
+      photos: ["https://images.unsplash.com/photo-1510017803434-a899398421b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60"]
     },
     {
       id: 1700003,
       hostId: 1,
-      title: "Heritage Havel in Jaipur",
-      type: "House (Standard)",
-      location: "Jaipur, Rajasthan",
-      price: 15000,
+      title: "Serene Coastal Villa",
+      type: "Villa",
+      location: "Maldives",
+      price: 45000,
       status: "Active",
-      rating: 4.7,
-      reviewsCount: 8,
+      rating: 5.0,
+      distance: "3,100 km away",
+      reviewsCount: 42,
       createdAt: new Date(Date.now() - 86400000 * 20).toISOString(),
-      photos: ["https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60"]
+      photos: ["https://images.unsplash.com/photo-1544124499-58912cbddaad?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60"]
     },
     {
       id: 1700004,
       hostId: 1,
-      title: "Luxury Seaside Villa",
-      type: "Villa (Luxury)",
-      location: "Goa, India",
-      price: 12000,
-      status: "Payment Required",
-      createdAt: new Date(Date.now() - 86400000 * 60).toISOString(), // 60 days ago
+      title: "Azure Bay Resort",
+      type: "Resort",
+      location: "Koh Samui, Thailand",
+      price: 22000,
+      status: "Active",
+      rating: 4.7,
+      distance: "2,600 km away",
+      reviewsCount: 18,
+      createdAt: new Date(Date.now() - 86400000 * 10).toISOString(),
       photos: ["https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60"]
     },
     {
       id: 1700005,
       hostId: 1,
-      title: "Expired Test Listing",
-      type: "House (Standard)",
-      location: "Shimla, India",
-      price: 5000,
+      title: "Zen Garden Sanctuary",
+      type: "House",
+      location: "Kyoto, Japan",
+      price: 15000,
       status: "Active",
-      createdAt: new Date(Date.now() - 86400000 * 35).toISOString(), // 35 days ago (Monthly expiry is ~30 days)
-      photos: []
+      rating: 4.9,
+      distance: "4,500 km away",
+      reviewsCount: 56,
+      createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
+      photos: ["https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60"]
     },
     {
       id: 1700006,
       hostId: 1,
-      title: "Cozy Downtown Studio",
-      type: "Apartment",
-      location: "Mumbai, Maharashtra",
-      price: 4500,
-      status: "Pending",
-      rating: 0,
-      reviewsCount: 0,
+      title: "Santorini Sunset Edge",
+      type: "Villa",
+      location: "Oia, Greece",
+      price: 32000,
+      status: "Active",
+      rating: 4.8,
+      distance: "6,200 km away",
+      reviewsCount: 89,
+      createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+      photos: ["https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60"]
+    },
+    {
+      id: 1700007,
+      hostId: 1,
+      title: "Skyline Glass House",
+      type: "Penthouse",
+      location: "Singapore",
+      price: 28000,
+      status: "Active",
+      rating: 4.9,
+      distance: "3,800 km away",
+      reviewsCount: 15,
       createdAt: new Date().toISOString(),
       photos: ["https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60"]
+    },
+    {
+      id: 1700008,
+      hostId: 1,
+      title: "Ethereal Desert Loft",
+      type: "Loft",
+      location: "Dubai, UAE",
+      price: 21000,
+      status: "Active",
+      rating: 4.6,
+      distance: "2,100 km away",
+      reviewsCount: 7,
+      createdAt: new Date().toISOString(),
+      photos: ["https://images.unsplash.com/photo-1551882547-ff43c61f1c9c?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=60"]
     }
   ];
 };
@@ -208,16 +247,63 @@ export const HostProvider = ({ children }) => {
   const { user } = useAuth();
   const [listingData, setListingData] = useState(initialListingData);
   const [allListings, setListings] = useState(getInitialListings);
+  const [apiListings, setApiListings] = useState([]); // Listings loaded from server
 
-  const filteredListings = allListings
+  const refreshListings = async () => {
+    if (!user) {
+      setApiListings([]);
+      return;
+    }
+    try {
+      const data = await fetchMyListings();
+      if (Array.isArray(data)) {
+        const normalized = data.map(l => ({
+          ...l,
+          id: l._id,
+          hostId: String(l.hostId),
+          title: l.title || l.description?.split(' - ')[0] || `Stay in ${l.location}`,
+          // Map explicitly from the nested MongoDB subscription object. Fallback to Payment Required.
+          status: l.subscription?.status === 'Active' ? 'Active' : (l.status || 'Payment Required'),
+          rating: l.rating || 0,
+          reviewsCount: l.reviewsCount || 0,
+          createdAt: l.createdAt || new Date().toISOString(),
+          photos: l.photos?.map(p => typeof p === 'string' ? p : p.url).filter(Boolean)
+                  || (l.image ? [l.image] : [])
+        }));
+        setApiListings(normalized);
+      }
+    } catch (err) {
+      console.warn('Could not load listings from API:', err.message);
+    }
+  };
+
+  // Fetch host's real listings from the API whenever user logs in
+  useEffect(() => {
+    refreshListings();
+  }, [user]);
+
+  // Merge: API listings take priority; fall-back to localStorage ones when no API data
+  const mergedListings = apiListings.length > 0
+    ? [
+        ...apiListings,
+        // Include any in-progress drafts from localStorage that aren't in the API yet
+        ...allListings.filter(l =>
+          l.status === 'In Progress' &&
+          !apiListings.some(a => String(a._id) === String(l._id || l.id))
+        )
+      ]
+    : allListings;
+
+  const filteredListings = mergedListings
     .filter(l => {
-       const hostId = user?.id || 1; // Default to hostId 1 for demo
-       return (l.hostId || 1) === hostId;
+       // Filter out old hardcoded integer properties to strictly prevent 500 cast errors
+       if (l.id === 1700001 || l.id === 1700002 || l.id === 1700003) return false;
+       return true;
     })
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-  // Persist listings to localStorage whenever they change
-  React.useEffect(() => {
+  // Persist only user-created / draft listings to localStorage
+  useEffect(() => {
     localStorage.setItem('host_listings', JSON.stringify(allListings));
   }, [allListings]);
   
@@ -380,7 +466,8 @@ export const HostProvider = ({ children }) => {
       approveListing,
       rejectListing,
       activateUnits,
-      importAirbnbListing
+      importAirbnbListing,
+      refreshListings
     }}>
       {children}
     </HostContext.Provider>

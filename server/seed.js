@@ -1,78 +1,103 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const Listing = require('./models/Listing');
+const User = require('./models/User');
 
 // We need a way to get the data from the frontend mock file.
 // Since mockListings.js uses ES modules and imports images, we'll recreate a clean version for seeding.
 
+const HOST_EMAIL = 'rajnishbansal0906@gmail.com';
+
 const seedData = [
-  { 
-    location: 'Goa, India', 
-    distance: '500 km away', 
-    price: 12500, 
-    rating: 4.85, 
+  {
+    location: "Phuket, Thailand",
+    distance: "2,400 km away",
+    price: 12500,
+    rating: 4.85,
     reviewsCount: 124,
-    image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1000&auto=format&fit=crop',
-    description: "Relax in this stunning beachfront villa with private pool access and panoramic ocean views. Perfect for a tropical getaway.",
-    host: { name: "Rohan", image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop" },
+    image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1000&auto=format&fit=crop",
+    description: "The Oak Street Loft - Relax in this stunning beachfront villa with private pool access.",
+    host: { name: "Rajnish", image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop" },
     amenities: ["WiFi", "Pool", "Air Conditioning", "Kitchen"],
     maxGuests: 6,
-    propertyType: "Villa",
+    propertyType: "Apartment",
     instantBook: true,
-    coordinates: { lat: 15.2993, lng: 74.1240 },
-    availableFrom: "2025-01-01",
-    availableTo: "2026-12-31"
+    coordinates: { lat: 7.8804, lng: 98.3922 }
   },
-  { 
-    location: 'Manali, India', 
-    distance: '320 km away', 
-    price: 8500, 
-    rating: 4.92, 
+  {
+    location: "Bali, Indonesia",
+    distance: "1,200 km away",
+    price: 18500,
+    rating: 4.92,
     reviewsCount: 86,
-    image: 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?w=1000&auto=format&fit=crop',
-    description: "Cozy wooden cottage nestled in the Himalayas. Experience snow-capped peaks and warm fireside evenings.",
-    host: { name: "Priya", image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop" },
+    image: "https://images.unsplash.com/photo-1510017803434-a899398421b3?w=1000&auto=format&fit=crop",
+    description: "Modern Urban Retreat - Luxury resort stay with private pools and tropical gardens.",
+    host: { name: "Rajnish", image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop" },
     amenities: ["WiFi", "Parking"],
     maxGuests: 4,
-    propertyType: "Cottage",
+    propertyType: "Condo",
     instantBook: false,
-    coordinates: { lat: 32.2396, lng: 77.1887 },
-    availableFrom: "2025-01-01",
-    availableTo: "2026-12-31"
+    coordinates: { lat: -8.4095, lng: 115.1889 }
   },
-  { 
-    location: 'Kerala, India', 
-    distance: '1,200 km away', 
-    price: 15400, 
-    rating: 4.96, 
+  {
+    location: "Maldives",
+    distance: "3,100 km away",
+    price: 45000,
+    rating: 5.0,
     reviewsCount: 210,
-    image: 'https://images.unsplash.com/photo-1563911302283-d2bc129e7570?w=1000&auto=format&fit=crop',
-    description: "Traditional houseboat stay on the serene backwaters of Alleppey. Includes full board meals and sunset cruise.",
-    host: { name: "Anand", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop" },
+    image: "https://images.unsplash.com/photo-1544124499-58912cbddaad?w=1000&auto=format&fit=crop",
+    description: "Serene Coastal Villa - Exclusive water bungalow with direct reef access.",
+    host: { name: "Rajnish", image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop" },
     amenities: ["Air Conditioning", "Kitchen"],
     maxGuests: 2,
-    propertyType: "Boat",
+    propertyType: "Villa",
     instantBook: true,
-    coordinates: { lat: 9.4981, lng: 76.3388 },
-    availableFrom: "2025-01-01",
-    availableTo: "2026-12-31"
+    coordinates: { lat: 3.2028, lng: 73.2207 }
   },
-  { 
-    location: 'Jaipur, Rajasthan', 
-    distance: '260 km away', 
-    price: 6500, 
-    rating: 4.88, 
+  {
+    location: "Koh Samui, Thailand",
+    distance: "2,600 km away",
+    price: 22000,
+    rating: 4.75,
     reviewsCount: 156,
-    image: 'https://images.unsplash.com/photo-1524230572899-a752b3835840?w=1000&auto=format&fit=crop',
-    description: "Heritage haveli room in the heart of the Pink City. Walk to Hawa Mahal and City Palace.",
-    host: { name: "Vikram", image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&auto=format&fit=crop" },
+    image: "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=1000&auto=format&fit=crop",
+    description: "Azure Bay Resort - Panoramic ocean views and luxury spa services.",
+    host: { name: "Rajnish", image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop" },
     amenities: ["WiFi", "Air Conditioning"],
     maxGuests: 3,
-    propertyType: "House",
+    propertyType: "Resort",
     instantBook: false,
-    coordinates: { lat: 26.9124, lng: 75.7873 },
-    availableFrom: "2025-01-01",
-    availableTo: "2026-12-31"
+    coordinates: { lat: 9.5120, lng: 100.0136 }
+  },
+  {
+    location: "Kyoto, Japan",
+    distance: "4,500 km away",
+    price: 15000,
+    rating: 4.95,
+    reviewsCount: 56,
+    image: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=1000&auto=format&fit=crop",
+    description: "Zen Garden Sanctuary - Traditional heritage stay in the heart of Kyoto.",
+    host: { name: "Rajnish", image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop" },
+    amenities: ["WiFi", "Air Conditioning"],
+    maxGuests: 2,
+    propertyType: "House",
+    instantBook: true,
+    coordinates: { lat: 35.0116, lng: 135.7681 }
+  },
+  {
+    location: "Oia, Greece",
+    distance: "6,200 km away",
+    price: 32000,
+    rating: 4.88,
+    reviewsCount: 89,
+    image: "https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=1000&auto=format&fit=crop",
+    description: "Santorini Sunset Edge - Iconic white-washed villa with caldera views.",
+    host: { name: "Rajnish", image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop" },
+    amenities: ["WiFi", "Pool"],
+    maxGuests: 4,
+    propertyType: "Villa",
+    instantBook: false,
+    coordinates: { lat: 36.4618, lng: 25.3753 }
   }
 ];
 
@@ -81,11 +106,32 @@ const seedDB = async () => {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('✅ Connected to MongoDB for seeding...');
 
+    // Find the host user
+    const hostUser = await User.findOne({ email: HOST_EMAIL });
+    let hostId = null;
+    if (hostUser) {
+      hostId = hostUser._id;
+      console.log(`✅ Host found: ${hostUser.name || HOST_EMAIL} (ID: ${hostId})`);
+      // Ensure host role
+      if (hostUser.role !== 'Host') {
+        await User.findByIdAndUpdate(hostId, { role: 'Host' });
+        console.log('✅ Promoted to Host role');
+      }
+    } else {
+      console.warn(`⚠️  Host user ${HOST_EMAIL} not found. Listings will have no hostId.`);
+    }
+
     await Listing.deleteMany({});
     console.log('🗑️  Old listings cleared.');
 
-    await Listing.insertMany(seedData);
-    console.log('🌱 Data seeded successfully!');
+    // Inject hostId into each seed record
+    const dataWithHost = seedData.map(item => ({
+      ...item,
+      ...(hostId ? { hostId } : {})
+    }));
+
+    await Listing.insertMany(dataWithHost);
+    console.log(`🌱 Data seeded successfully! (${dataWithHost.length} listings)`);
 
     process.exit();
   } catch (err) {

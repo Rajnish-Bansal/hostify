@@ -71,8 +71,13 @@ router.post('/verify-otp', async (req, res) => {
       user = new User({
         phone: phone,
         name: "Test User " + phone.slice(-4),
-        role: 'Guest'
+        role: 'Guest',
+        isPhoneVerified: true
       });
+      await user.save();
+    } else {
+      // If user exists, ensure phone is marked as verified
+      user.isPhoneVerified = true;
       await user.save();
     }
 
@@ -86,7 +91,8 @@ router.post('/verify-otp', async (req, res) => {
         id: user._id,
         name: user.name,
         phone: user.phone,
-        role: user.role
+        role: user.role,
+        isPhoneVerified: user.isPhoneVerified
       }
     });
 

@@ -2,7 +2,6 @@
   position: absolute;
   top: 100%;
   right: 0;
-  width: 320px;
   background: white;
   border-radius: 16px;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
@@ -58,8 +57,9 @@
 }
 
 .counter-btn:hover:not(:disabled) {
-  border-color: #222222;
-  color: #222222;
+  border-color: #32C0C0;
+  color: #32C0C0;
+  background: #f0fdfa;
 }
 
 .counter-btn.disabled {

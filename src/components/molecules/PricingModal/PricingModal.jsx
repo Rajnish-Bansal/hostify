@@ -3,9 +3,10 @@ import { X, TrendingUp, Calendar, Percent, ShieldCheck } from 'lucide-react';
 import './PricingModal.css';
 
 const PricingModal = ({ isOpen, onClose, listing, onUpdate }) => {
-  const [weekendPrice, setWeekendPrice] = useState(listing?.weekendPrice || listing?.price || 0);
-  const [weeklyDiscount, setWeeklyDiscount] = useState(listing?.discounts?.weekly || 10);
-  const [monthlyDiscount, setMonthlyDiscount] = useState(listing?.discounts?.monthly || 20);
+  const [basePrice, setBasePrice] = useState(listing?.price ?? 0);
+  const [weekendPrice, setWeekendPrice] = useState(listing?.weekendPrice ?? listing?.price ?? 0);
+  const [weeklyDiscount, setWeeklyDiscount] = useState(listing?.discounts?.weekly ?? 10);
+  const [monthlyDiscount, setMonthlyDiscount] = useState(listing?.discounts?.monthly ?? 20);
   const [saving, setSaving] = useState(false);
 
   if (!isOpen) return null;
@@ -14,22 +15,22 @@ const PricingModal = ({ isOpen, onClose, listing, onUpdate }) => {
     setSaving(true);
     try {
       await onUpdate(listing.id, {
-        weekendPrice,
+        price: Number(basePrice),
+        weekendPrice: Number(weekendPrice),
         discounts: {
-          weekly: weeklyDiscount,
-          monthly: monthlyDiscount
+          weekly: Number(weeklyDiscount),
+          monthly: Number(monthlyDiscount)
         }
       });
       onClose();
     } catch (err) {
-      alert("Failed to update pricing components");
+      console.error("Failed to update pricing", err);
     } finally {
       setSaving(false);
     }
   };
 
   // Pricing Preview Logic
-  const basePrice = listing?.price || 0;
   const weekendTotal = weekendPrice * 2;
   const weeklyTotal = basePrice * 7 * (1 - weeklyDiscount / 100);
 
@@ -42,6 +43,24 @@ const PricingModal = ({ isOpen, onClose, listing, onUpdate }) => {
         </header>
 
         <div className="modal-body">
+          <section className="pricing-section">
+            <div className="section-title">
+              <TrendingUp size={18} />
+              <h3>Base Nightly Price</h3>
+            </div>
+            <p className="description">Set your standard nightly rate for Sunday through Thursday.</p>
+            <div className="price-input-wrapper">
+              <span className="currency-prefix">₹</span>
+              <input 
+                type="number" 
+                value={basePrice} 
+                onChange={(e) => setBasePrice(e.target.value)}
+                placeholder="Base Price"
+              />
+              <span className="per-night">per night</span>
+            </div>
+          </section>
+
           <section className="pricing-section">
             <div className="section-title">
               <Calendar size={18} />
@@ -59,7 +78,7 @@ const PricingModal = ({ isOpen, onClose, listing, onUpdate }) => {
               <span className="per-night">per weekend night</span>
             </div>
             <div className="pricing-preview-tip">
-              Current base: ₹{basePrice} · Weekend markup: +{Math.round(((weekendPrice - basePrice) / basePrice) * 100)}%
+              Current base: ₹{basePrice} · Weekend markup: +{basePrice > 0 ? Math.round(((weekendPrice - basePrice) / basePrice) * 100) : 0}%
             </div>
           </section>
 
@@ -94,7 +113,7 @@ const PricingModal = ({ isOpen, onClose, listing, onUpdate }) => {
                 </div>
               </div>
             </div>
-          </footer >
+          </footer>
 
           <div className="pricing-pro-tip">
              <ShieldCheck size={20} className="pro-icon" />

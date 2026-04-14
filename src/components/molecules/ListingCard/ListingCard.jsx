@@ -1,18 +1,36 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Star, Heart, Eye } from 'lucide-react';
+import { useAuth } from '../../../context/AuthContext';
 import './ListingCard.css';
 
-const ListingCard = ({ image, location, distance, dates, price, rating, isRecentlyViewed }) => {
+const ListingCard = ({ id, image, location, distance, price, rating, isRecentlyViewed }) => {
+  const navigate = useNavigate();
+  const { user, openAuthModal } = useAuth();
+
+  const handleCardClick = () => {
+    navigate(`/rooms/${id}`);
+  };
+
+  const handleBookNow = (e) => {
+    e.stopPropagation();
+    if (!user) {
+      openAuthModal();
+      return;
+    }
+    navigate(`/book/stays/${id}`);
+  };
+
   return (
-    <div className="listing-card">
+    <div className="listing-card" onClick={handleCardClick} style={{ cursor: 'pointer' }}>
       <div className="listing-image-wrapper">
         <img src={image} alt={location} className="listing-image" />
-        <button className="favorite-button">
-          <Heart size={24} color="white" className="heart-icon" />
+        <button className="favorite-button" onClick={(e) => e.stopPropagation()}>
+          <Heart size={20} className="heart-icon" />
         </button>
         {isRecentlyViewed && (
           <div className="recently-viewed-badge">
-            <Eye size={14} />
+            <Eye size={12} />
             <span>Recently viewed</span>
           </div>
         )}
@@ -21,15 +39,15 @@ const ListingCard = ({ image, location, distance, dates, price, rating, isRecent
         <div className="listing-header">
           <h3 className="listing-location">{location}</h3>
           <div className="listing-rating">
-            <Star size={12} fill="black" className="star-icon" />
+            <span className="rating-dot"></span>
             <span>{rating}</span>
           </div>
         </div>
         <p className="listing-info">{distance}</p>
-        <p className="listing-info">{dates}</p>
         <p className="listing-price">
-          <span className="price-bold">₹{price.toLocaleString('en-IN')}</span> night
+          <span className="price-bold">₹{price.toLocaleString('en-IN')}</span> / night
         </p>
+        <button className="btn-book-now" onClick={handleBookNow}>Book Now</button>
       </div>
     </div>
   );

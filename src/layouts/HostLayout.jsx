@@ -74,7 +74,16 @@ const HostLayoutContent = () => {
                       <div className="menu-item" style={{ fontWeight: '600', cursor: 'default', paddingBottom: '4px' }}>{user?.name || 'User'}</div>
                       <div className="menu-item" style={{ cursor: 'default', paddingTop: '0', fontSize: '12px', color: '#717171' }}>{user?.email}</div>
                       <div style={{ height: '1px', background: '#ebebeb', margin: '8px 0' }}></div>
-                      <div className="menu-item" style={{ padding: '10px 16px', cursor: 'pointer' }}>Profile</div>
+                      <div 
+                        className="menu-item" 
+                        style={{ padding: '10px 16px', cursor: 'pointer' }}
+                        onClick={() => {
+                          navigate('/become-a-host/dashboard?tab=profile');
+                          setIsUserMenuOpen(false);
+                        }}
+                      >
+                        Profile
+                      </div>
                       <div className="menu-item" onClick={handleLogout} style={{ padding: '10px 16px', cursor: 'pointer' }}>Log out</div>
                   </div>
                 )}

@@ -35,17 +35,17 @@
 
 .auth-header h3 {
   font-family: var(--font-body);
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 14px;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--secondary);
+  color: var(--text-primary);
 }
 
 .close-btn {
-  background: var(--secondary);
-  color: var(--primary);
-  border: none;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-light);
   font-size: 14px;
   cursor: pointer;
   width: 32px;
@@ -59,8 +59,9 @@
 
 .close-btn:hover {
   transform: rotate(90deg);
-  background: var(--primary);
-  color: var(--secondary);
+  background: var(--primary-soft);
+  color: var(--primary);
+  border-color: var(--primary);
 }
 
 .auth-body {
@@ -71,9 +72,10 @@
   font-family: var(--font-heading);
   font-size: 32px;
   font-weight: 800;
-  margin-bottom: 32px;
-  color: var(--secondary);
+  margin-bottom: 24px;
+  color: var(--text-primary);
   text-align: center;
+  letter-spacing: -0.5px;
 }
 
 .auth-input {
@@ -90,33 +92,30 @@
 .auth-input:focus {
   border-color: var(--primary);
   background: white;
-  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.1);
+  box-shadow: 0 0 0 4px var(--primary-soft);
   outline: none;
 }
 
 .auth-submit-btn {
   width: 100%;
-  background: linear-gradient(135deg, var(--secondary), var(--secondary-hover));
-  color: white; /* Changed from var(--primary) for better contrast */
+  background-color: var(--primary);
+  color: white;
   padding: 18px;
   border: none;
-  border-radius: var(--radius-md); /* Consistent with input radius */
+  border-radius: var(--radius-md);
   font-size: 15px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   cursor: pointer;
   margin-top: 12px;
-  box-shadow: var(--shadow-md);
   transition: all 0.3s;
-  border: 2px solid var(--secondary); /* Explicit border for visibility */
 }
 
 .auth-submit-btn:hover {
+  background-color: var(--primary-hover);
   transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
-  background: linear-gradient(135deg, var(--primary), #D97706);
-  color: var(--secondary);
+  box-shadow: 0 8px 20px var(--primary-soft);
 }
 
 .auth-submit-btn:disabled {

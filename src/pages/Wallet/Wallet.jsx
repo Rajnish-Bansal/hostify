@@ -1,14 +1,35 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from '../../components/organisms/Navbar/Navbar';
 import './Wallet.css';
-import { CreditCard, Plus, ArrowUpRight, ArrowDownLeft, Wallet as WalletIcon } from 'lucide-react';
+import { CreditCard, Plus, ArrowUpRight, ArrowDownLeft, Wallet as WalletIcon, Loader2 } from 'lucide-react';
+import { fetchTransactions } from '../../services/api';
 
 const Wallet = () => {
-  const transactions = [
-    { id: 1, title: "Refund for Stay in Paris", date: "Jan 12, 2024", amount: "+₹4,500", type: "credit" },
-    { id: 2, title: "Booking: Beachfront Condo", date: "Dec 14, 2023", amount: "-₹18,500", type: "debit" },
-    { id: 3, title: "Gift Card Redeemed", date: "Nov 28, 2023", amount: "+₹5,000", type: "credit" }
-  ];
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadTransactions = async () => {
+      try {
+        const data = await fetchTransactions();
+        setTransactions(data);
+      } catch (err) {
+        console.error('Failed to load transactions:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadTransactions();
+  }, []);
+
+  const calculateBalance = () => {
+    return transactions.reduce((acc, t) => {
+      const amount = t.amount || 0;
+      return t.type === 'Credit' ? acc + amount : acc - amount;
+    }, 0);
+  };
+
+  const balance = calculateBalance();
 
   return (
     <>
@@ -22,8 +43,8 @@ const Wallet = () => {
               <span className="balance-label">Available Balance</span>
               <WalletIcon size={24} color="white" />
            </div>
-           <div className="balance-amount">₹9,500</div>
-           <div className="balance-expiry">Credits expire on Dec 31, 2026</div>
+            <div className="balance-amount">₹{balance.toLocaleString('en-IN')}</div>
+            <div className="balance-expiry">Secure transactions with 256-bit encryption</div>
         </div>
 
         {/* Payment Methods */}
@@ -52,19 +73,31 @@ const Wallet = () => {
         </div>
 
         <div className="transactions-list">
-           {transactions.map(t => (
-             <div key={t.id} className="transaction-item">
-                <div className={`transaction-icon ${t.type}`}>
-                   {t.type === 'credit' ? <ArrowDownLeft size={20} /> : <ArrowUpRight size={20} />}
+            {loading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+                <Loader2 className="animate-spin" size={32} color="var(--primary)" />
+              </div>
+            ) : transactions.length > 0 ? (
+              transactions.map(t => (
+                <div key={t._id} className="transaction-item">
+                   <div className={`transaction-icon ${t.type.toLowerCase()}`}>
+                      {t.type === 'Credit' ? <ArrowDownLeft size={20} /> : <ArrowUpRight size={20} />}
+                   </div>
+                   <div className="transaction-info">
+                      <div className="t-title">{t.description || t.category}</div>
+                      <div className="t-date">{new Date(t.createdAt).toLocaleDateString()}</div>
+                   </div>
+                   <div className={`t-amount ${t.type.toLowerCase()}`}>
+                     {t.type === 'Credit' ? '+' : '-'}₹{t.amount.toLocaleString('en-IN')}
+                   </div>
                 </div>
-                <div className="transaction-info">
-                   <div className="t-title">{t.title}</div>
-                   <div className="t-date">{t.date}</div>
-                </div>
-                <div className={`t-amount ${t.type}`}>{t.amount}</div>
-             </div>
-           ))}
-        </div>
+              ))
+            ) : (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#717171' }}>
+                No transactions found.
+              </div>
+            )}
+         </div>
 
       </div>
     </>
