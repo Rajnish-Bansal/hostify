@@ -277,6 +277,20 @@ io.on('connection', (socket) => {
   });
 });
 
+const path = require('path');
+
+// --- Static File Serving (Production) ---
+const distPath = path.join(__dirname, '../dist');
+app.use(express.static(distPath));
+
+// --- Catch-all for React Router ---
+app.get('*', (req, res) => {
+  // If request is not an API call, serve the index.html from dist
+  if (!req.url.startsWith('/api')) {
+    res.sendFile(path.join(distPath, 'index.html'));
+  }
+});
+
 httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server + Real-time Messaging running on http://0.0.0.0:${PORT}`);
 });
