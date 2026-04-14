@@ -20,7 +20,7 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
 
   // Guest State
   const [guestCounts, setGuestCounts] = useState({ adults: 1, children: 0 });
-  const [showGuestPopover, setShowGuestPopover] = useState(false);
+
   
   const totalGuests = guestCounts.adults + guestCounts.children;
 
@@ -32,7 +32,6 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
     const handleClickOutside = (event) => {
       if (containerRef.current && !containerRef.current.contains(event.target)) {
         setActiveField(null);
-        setShowGuestPopover(false);
       }
     };
 
@@ -52,7 +51,6 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
       });
     }
     setActiveField(null);
-    setShowGuestPopover(false);
   };
 
   const handleKeyDown = (e) => {
@@ -90,7 +88,6 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
             className={`hero-search-group ${activeField === 'destination' ? 'active' : ''}`}
             onClick={() => {
                 setActiveField('destination');
-                setShowGuestPopover(false);
             }}
         >
           <label>Location</label>
@@ -146,7 +143,6 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
             className={`hero-search-group ${activeField === 'dates' ? 'active' : ''}`}
             onClick={() => {
                 setActiveField('dates');
-                setShowGuestPopover(false);
             }}
         >
           <label>Check In</label>
@@ -180,7 +176,6 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
             className={`hero-search-group ${activeField === 'dates-out' ? 'active' : ''}`}
             onClick={() => {
                 setActiveField('dates');
-                setShowGuestPopover(false);
             }}
         >
           <label>Check Out</label>
@@ -201,13 +196,7 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
             className={`hero-search-group ${activeField === 'guests' ? 'active' : ''}`}
             onClick={(e) => {
                 e.stopPropagation();
-                if (activeField === 'guests' && showGuestPopover) {
-                    setShowGuestPopover(false);
-                    setActiveField(null);
-                } else {
-                    setActiveField('guests');
-                    setShowGuestPopover(true);
-                }
+                setActiveField(prev => prev === 'guests' ? null : 'guests');
             }}
         >
           <label>Guests</label>
@@ -216,7 +205,7 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
           </div>
 
           {/* Guest Popover */}
-          {showGuestPopover && (
+          {activeField === 'guests' && (
               <div 
                 className="guest-popover" 
                 ref={guestPopoverRef}
