@@ -86,8 +86,9 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
         {/* Location */}
         <div 
             className={`hero-search-group ${activeField === 'destination' ? 'active' : ''}`}
-            onClick={() => {
-                setActiveField('destination');
+            onClick={(e) => {
+                e.stopPropagation();
+                setActiveField(prev => prev === 'destination' ? null : 'destination');
             }}
         >
           <label>Location</label>
@@ -109,7 +110,8 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
                 }
             }}
             onKeyDown={handleKeyDown}
-            onFocus={() => {
+            onFocus={(e) => {
+                e.stopPropagation();
                 setActiveField('destination');
                 if (destination.trim()) setShowSuggestions(true);
             }}
@@ -141,8 +143,9 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
         {/* Date In */}
         <div 
             className={`hero-search-group ${activeField === 'dates' ? 'active' : ''}`}
-            onClick={() => {
-                setActiveField('dates');
+            onClick={(e) => {
+                e.stopPropagation();
+                setActiveField(prev => prev === 'dates' ? null : 'dates');
             }}
         >
           <label>Check In</label>
@@ -173,9 +176,10 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
 
         {/* Date Out */}
         <div 
-            className={`hero-search-group ${activeField === 'dates-out' ? 'active' : ''}`}
-            onClick={() => {
-                setActiveField('dates');
+            className={`hero-search-group ${activeField === 'dates' ? 'active' : ''}`}
+            onClick={(e) => {
+                e.stopPropagation();
+                setActiveField(prev => prev === 'dates' ? null : 'dates');
             }}
         >
           <label>Check Out</label>

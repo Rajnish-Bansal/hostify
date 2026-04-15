@@ -14,7 +14,7 @@ import PricingModal from '../../components/molecules/PricingModal/PricingModal';
 import Pricing from './Pricing';
 import { fetchPayoutStats, fetchHostAnalytics, updateListingPricing, fetchHostBookings, updateBookingStatus, fetchConversations, fetchMessages, startConversation, sendMessage, fetchUserProfile, updateUserProfile, uploadImage, fetchTransactions } from '../../services/api';
 
-const socket = io('http://localhost:5001'); // Match the server port in .env
+const socket = io(window.location.origin); // Use the current host for Socket.io in production
 
 const HostDashboard = () => {
   const { listings, updateListingStatus, loadListingForEdit, deleteListing, resetListingData, activateUnits, refreshListings } = useHost();

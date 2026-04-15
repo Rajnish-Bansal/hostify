@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { fetchConversations, fetchMessages, sendMessage } from '../../services/api'; // Added sendMessage API helper
 import './Inbox.css';
 
-const socket = io('http://localhost:5001'); // Match the server port in .env
+const socket = io(window.location.origin); // Use the current host for Socket.io in production
 
 const Inbox = () => {
   const { user } = useAuth();
