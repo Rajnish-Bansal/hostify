@@ -359,3 +359,16 @@
     display: none;
   }
 }
+
+.desktop-only { display: block; }
+.mobile-only { display: none; }
+
+@media (max-width: 768px) {
+  .desktop-only { display: none; }
+  .mobile-only { display: block; }
+  
+  .navbar-search-pill {
+    margin: 0 4px;
+    padding: 6px 12px;
+  }
+}

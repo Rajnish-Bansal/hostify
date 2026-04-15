@@ -81,9 +81,10 @@ const Navbar = ({ onSearch, onLogoClick, scrolled }) => {
           {scrolled && (
             <div className="navbar-search-pill" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
               <div className="search-pill-content">
-                <span className="pill-text">Anywhere • Any week • Add guests</span>
+                <span className="pill-text desktop-only">Anywhere • Any week • Add guests</span>
+                <span className="pill-text mobile-only">Search...</span>
                 <div className="pill-search-icon">
-                  <Menu size={12} className="pill-icon-inner" />
+                  <Search size={12} className="pill-icon-inner" />
                 </div>
               </div>
             </div>

@@ -294,3 +294,24 @@
     box-shadow: 0 -10px 40px rgba(0,0,0,0.15);
   }
 }
+
+@media (max-width: 480px) {
+  .hero-search-button {
+    padding: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+  }
+  
+  .search-btn-text {
+    display: none;
+  }
+  
+  .hero-search {
+    padding: 8px;
+  }
+  
+  .hero-search-group {
+    padding: 8px 12px;
+  }
+}
