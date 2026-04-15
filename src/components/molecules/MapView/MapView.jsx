@@ -63,9 +63,16 @@ const createCustomIcon = (price, isHovered = false) => {
 // Component to handle map updates & bounds
 const MapUpdater = ({ listings, isSingle }) => {
   const map = useMap();
+  const [lastListingsId, setLastListingsId] = useState('');
 
   useEffect(() => {
     if (!listings || listings.length === 0) return;
+
+    // Create a unique key for the current set of listings
+    const currentId = listings.map(l => l._id || l.id).sort().join(',');
+    
+    // Only update bounds if the set of listings has actually changed
+    if (currentId === lastListingsId) return;
 
     try {
       const validPoints = listings
@@ -85,10 +92,11 @@ const MapUpdater = ({ listings, isSingle }) => {
           duration: 1
         });
       }
+      setLastListingsId(currentId);
     } catch (err) {
       console.warn("Map interaction warning:", err);
     }
-  }, [listings, map, isSingle]);
+  }, [listings, map, isSingle, lastListingsId]);
 
   return null;
 };
