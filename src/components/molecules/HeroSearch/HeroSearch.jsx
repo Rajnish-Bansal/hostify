@@ -94,7 +94,7 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
           <label>Location</label>
           <input 
             type="text" 
-            placeholder="Bali, Indonesia" 
+            placeholder="Goa, India" 
             value={destination}
             onChange={(e) => {
                 const val = e.target.value;
