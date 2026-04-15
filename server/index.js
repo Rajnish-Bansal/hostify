@@ -289,12 +289,9 @@ const path = require('path');
 const distPath = path.join(__dirname, '../dist');
 app.use(express.static(distPath));
 
-// --- Catch-all for React Router (Express 5.x / *path syntax) ---
-app.get('*path', (req, res) => {
-  // If request is not an API call, serve the index.html from dist
-  if (!req.url.startsWith('/api')) {
-    res.sendFile(path.join(distPath, 'index.html'));
-  }
+// --- Catch-all for React Router ---
+app.get(/^(?!\/api).*/, (req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'));
 });
 
 httpServer.listen(PORT, '0.0.0.0', () => {

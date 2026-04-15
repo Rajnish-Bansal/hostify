@@ -22,6 +22,7 @@ const RoomDetails = () => {
   const { user, openAuthModal } = useAuth();
   const { listings: hostListings } = useHost();
   const { addToRecentlyViewed } = useSearch();
+  const routeListing = location.state?.listing || null;
   
   const [listing, setListing] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -30,6 +31,12 @@ const RoomDetails = () => {
   useEffect(() => {
     const getListing = async () => {
       try {
+        if (routeListing && (routeListing.id || routeListing._id) == id) {
+          setListing(routeListing);
+          setLoading(false);
+          return;
+        }
+
         // 1. Try to find in host listings first (local state)
         const localListing = hostListings.find(l => (l._id || l.id) == id);
         if (localListing) {
@@ -63,7 +70,7 @@ const RoomDetails = () => {
       }
     };
     getListing();
-  }, [id, hostListings]);
+  }, [id, hostListings, routeListing]);
 
   // Track recently viewed
   useEffect(() => {

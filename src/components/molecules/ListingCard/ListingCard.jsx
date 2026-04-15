@@ -4,12 +4,24 @@ import { Star, Heart, Eye } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import './ListingCard.css';
 
-const ListingCard = ({ id, image, location, distance, price, rating, isRecentlyViewed }) => {
+const ListingCard = ({ id, image, location, distance, price, rating, isRecentlyViewed, ...listing }) => {
   const navigate = useNavigate();
   const { user, openAuthModal } = useAuth();
 
   const handleCardClick = () => {
-    navigate(`/rooms/${id}`);
+    navigate(`/rooms/${id}`, {
+      state: {
+        listing: {
+          id,
+          image,
+          location,
+          distance,
+          price,
+          rating,
+          ...listing,
+        }
+      }
+    });
   };
 
   const handleBookNow = (e) => {
@@ -18,7 +30,19 @@ const ListingCard = ({ id, image, location, distance, price, rating, isRecentlyV
       openAuthModal();
       return;
     }
-    navigate(`/book/stays/${id}`);
+    navigate(`/book/stays/${id}`, {
+      state: {
+        listing: {
+          id,
+          image,
+          location,
+          distance,
+          price,
+          rating,
+          ...listing,
+        }
+      }
+    });
   };
 
   return (
