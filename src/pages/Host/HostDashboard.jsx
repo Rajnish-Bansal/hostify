@@ -4,7 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useHost } from '../../context/HostContext';
 import { useAuth } from '../../context/AuthContext';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, addMonths, subMonths, isSameMonth, isSameDay, parseISO, isWithinInterval } from 'date-fns';
-import { User as UserIcon, ChevronLeft, ChevronRight, Download, Trash2, Camera, Upload, Link2, Star, Eye, DollarSign, Calendar, TrendingUp, IndianRupee, Info, MessageSquare, CreditCard, ShieldCheck, Wallet, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { User as UserIcon, Menu, ChevronLeft, ChevronRight, Download, Trash2, Camera, Upload, Link2, Star, Eye, DollarSign, Calendar, TrendingUp, IndianRupee, Info, MessageSquare, CreditCard, ShieldCheck, Wallet, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import './HostDashboard.css';
 import { generateICalData } from '../../utils/icalGenerator';
 import ConfirmationModal from '../../components/molecules/ConfirmationModal/ConfirmationModal';
@@ -1127,7 +1127,7 @@ const HostDashboard = () => {
       {/* Mobile Header */}
       <div className="mobile-dashboard-header">
         <button className="hamburger-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-          <Info size={24} />
+          <Menu size={24} />
         </button>
         <div className="mobile-brand">Hostify</div>
         <div className="mobile-user-avatar">
