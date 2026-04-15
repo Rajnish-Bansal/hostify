@@ -63,7 +63,6 @@ const Navbar = ({ onSearch, onLogoClick, scrolled }) => {
     <>
       <header className={`navbar ${scrolled ? 'scrolled' : ''}`}>
         <div className="navbar-container">
-          {/* Logo */}
           <div className="navbar-logo">
             <Link 
               to="/" 
@@ -106,19 +105,19 @@ const Navbar = ({ onSearch, onLogoClick, scrolled }) => {
             
             {/* Globe icon removed */}
             
-            <Link to="/notifications" className="globe-button" style={{ marginLeft: '8px', cursor: 'pointer', color: 'inherit', textDecoration: 'none', padding: '12px' }}>
-               <span style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <Link to="/notifications" className="notifications-btn">
+               <span className="notifications-icon-wrapper">
                  <Bell size={18} />
                </span>
             </Link>
 
-            <div className="user-menu-container" style={{ position: 'relative' }} ref={userMenuRef}>
+            <div className="user-menu-container" ref={userMenuRef}>
                 <div 
                   className="user-menu-button" 
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                 >
                    {user ? (
-                      <span style={{ fontSize: '15px', fontWeight: '600', color: '#222', marginLeft: '4px', marginRight: '8px' }}>
+                      <span className="user-name-text">
                         {user.name?.split(' ')[0]}
                       </span>
                    ) : (
@@ -132,14 +131,12 @@ const Navbar = ({ onSearch, onLogoClick, scrolled }) => {
                      {user ? (
                         <>
                       {/* Name Display */}
-                      <Link to="/profile" className="menu-item-bold" style={{ cursor: 'pointer', paddingBottom: '4px', textDecoration: 'none', display: 'block', color: 'inherit' }}>{user.name || 'User'}</Link>
-                      <div className="menu-item" style={{ cursor: 'default', paddingTop: '0', fontSize: '12px', color: '#717171' }}>{user.email}</div>
+                      <Link to="/profile" className="menu-item-bold user-profile-link" onClick={() => setIsUserMenuOpen(false)}>
+                        {user.name || 'User'}
+                      </Link>
+                      <div className="menu-item user-email-display">{user.email}</div>
                       <div className="menu-divider"></div>
                       
-                      <Link to="/inbox" className="menu-item-bold" style={{textDecoration: 'none', display: 'block', color: 'inherit'}} onClick={() => setIsUserMenuOpen(false)}>Messages</Link>
-                      <Link to="/notifications" className="menu-item-bold" style={{textDecoration: 'none', display: 'block', color: 'inherit'}} onClick={() => setIsUserMenuOpen(false)}>Notifications</Link>
-                      <Link to="/bookings" className="menu-item-bold" style={{textDecoration: 'none', display: 'block', color: 'inherit'}} onClick={() => setIsUserMenuOpen(false)}>My Bookings</Link>
-                      <Link to="/wishlists" className="menu-item-bold" style={{textDecoration: 'none', display: 'block', color: 'inherit'}} onClick={() => setIsUserMenuOpen(false)}>Wishlists</Link>
                       <Link to="/wallet" className="menu-item-bold" style={{textDecoration: 'none', display: 'block', color: 'inherit'}} onClick={() => setIsUserMenuOpen(false)}>Wallet</Link>
                       <div className="menu-divider"></div>
                       <Link to="/account" className="menu-item" style={{textDecoration: 'none'}}>Account</Link>

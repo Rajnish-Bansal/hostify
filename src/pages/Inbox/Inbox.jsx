@@ -103,9 +103,9 @@ const Inbox = () => {
     <div className="inbox-page">
       <Navbar />
       
-      <div className="inbox-container">
+      <div className={`inbox-container ${selectedConversation ? 'chat-active' : ''}`}>
         {/* Sidebar: Conversations List */}
-        <div className="inbox-sidebar">
+        <div className={`inbox-sidebar ${selectedConversation ? 'mobile-hide' : ''}`}>
           <div className="inbox-header">
             <h1>Messages</h1>
             <div className="header-actions">
@@ -168,6 +168,11 @@ const Inbox = () => {
                   const otherParticipant = selectedConversation.participants?.find(p => p._id !== user?.id && p._id !== user?._id) || selectedConversation.participants?.[0] || {};
                   return (
                     <div className="chat-user-info">
+                      {selectedConversation && (
+                        <button className="mobile-back-btn" onClick={() => setSelectedConversation(null)}>
+                          <ChevronLeft size={24} />
+                        </button>
+                      )}
                       <div className="user-avatar" style={{ backgroundImage: `url(${otherParticipant.image})` }}></div>
                        <div>
                         <div className="user-name">{otherParticipant.name || 'User'}</div>

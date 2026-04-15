@@ -339,9 +339,61 @@
   margin-bottom: 8px;
 }
 
+.mobile-back-btn {
+  display: none;
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+}
+
 @media (max-width: 768px) {
+  .inbox-container {
+    padding-top: 70px;
+    height: 100vh;
+  }
+
   .inbox-sidebar {
-    width: 100%;
-    display: (props) => props.selected ? 'none' : 'flex';
+    width: 100% !important;
+    border-right: none;
+  }
+
+  .inbox-sidebar.mobile-hide {
+    display: none;
+  }
+
+  .inbox-chat-area {
+    width: 100% !important;
+    display: none;
+  }
+
+  .chat-active .inbox-chat-area {
+    display: flex;
+  }
+
+  .mobile-back-btn {
+    display: block;
+    margin-right: 8px;
+    color: var(--text-primary);
+  }
+
+  .inbox-header h1 {
+    font-size: 24px;
+  }
+
+  .chat-header {
+    padding: 12px 16px;
+  }
+}
+
+/* --- Inbox Mobile Refinements --- */
+@media (max-width: 768px) {
+  .chat-header {
+    justify-content: flex-start !important;
+    gap: 12px;
+  }
+  
+  .chat-user-info {
+    flex: 1;
   }
 }

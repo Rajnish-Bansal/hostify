@@ -21,6 +21,7 @@ const HostDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Performance Analytics State
   const [analyticsData, setAnalyticsData] = useState(null);
@@ -1122,9 +1123,22 @@ const HostDashboard = () => {
   });
 
   return (
-    <div className="dashboard-layout">
-      {/* Sidebar */}
-      <aside className="dashboard-sidebar">
+    <div className={`dashboard-layout ${isSidebarOpen ? 'sidebar-open' : ''}`}>
+      {/* Mobile Header */}
+      <div className="mobile-dashboard-header">
+        <button className="hamburger-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+          <Info size={24} />
+        </button>
+        <div className="mobile-brand">Hostify</div>
+        <div className="mobile-user-avatar">
+          {user?.avatar ? <img src={user.avatar} alt="avatar" /> : user?.name?.charAt(0) || 'H'}
+        </div>
+      </div>
+
+      {/* Sidebar Overlay */}
+      {isSidebarOpen && <div className="sidebar-overlay" onClick={() => setIsSidebarOpen(false)}></div>}
+
+      <div className={`dashboard-sidebar ${isSidebarOpen ? 'active' : ''}`}>
         <div className="sidebar-brand">
            <span className="brand-icon">🏠</span> Host Panel
         </div>
@@ -1169,7 +1183,7 @@ const HostDashboard = () => {
         <div className="sidebar-footer">
            <Link to="/" className="exit-link">Exit to Hostify</Link>
         </div>
-      </aside>
+      </div>
 
       {/* Main Content */}
       <main className="dashboard-main">
