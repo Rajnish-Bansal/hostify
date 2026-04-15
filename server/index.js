@@ -58,7 +58,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 
-const { scrapeAirbnb } = require('./services/scraper');
+const { scrapeExternal } = require('./services/scraper');
 
 // 1. Listings
 app.get('/api/listings', async (req, res) => {
@@ -70,13 +70,13 @@ app.get('/api/listings', async (req, res) => {
   }
 });
 
-app.post('/api/listings/import-airbnb', async (req, res) => {
+app.post('/api/listings/import-external', async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ message: 'URL is required' });
 
   try {
     console.log(`[API] Starting import for: ${url}`);
-    const data = await scrapeAirbnb(url);
+    const data = await scrapeExternal(url);
     res.json(data);
   } catch (err) {
     console.error('[API] Import failed:', err.message);

@@ -9,7 +9,7 @@ const auth = (req, res, next) => {
   }
 
   try {
-    const secret = process.env.JWT_SECRET || 'airbnb_secret_key';
+    const secret = process.env.JWT_SECRET || 'hostify_secret_key';
     const decoded = jwt.verify(token, secret);
     console.log('[AUTH SUCCESS] User:', decoded.id);
     req.user = decoded;

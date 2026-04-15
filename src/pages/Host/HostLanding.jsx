@@ -72,7 +72,7 @@ const HostLanding = () => {
             </div>
             <div className="card-text">
               <h3>Magic Import</h3>
-              <p>Coming from Airbnb? Onboard instantly by importing your existing listing details in one click.</p>
+              <p>Coming from another platform? Onboard instantly by importing your existing listing details in one click.</p>
             </div>
             <div className="card-action-hint">
               Try magic import <ChevronRight size={18} />
@@ -97,7 +97,7 @@ const HostLanding = () => {
             
             <h2 style={{ fontSize: '32px', fontWeight: '800', marginBottom: '16px', color: '#0f172a' }}>Magic Import</h2>
             <p style={{ color: '#64748b', fontSize: '16px', marginBottom: '40px', lineHeight: '1.6' }}>
-              Paste your Airbnb listing URL below. Our AI will handle the rest, syncing your photos, description, and amenities.
+              Paste your existing listing URL below. Our AI will handle the rest, syncing your photos, description, and amenities.
             </p>
 
             {isImporting ? (
@@ -110,7 +110,7 @@ const HostLanding = () => {
               <div className="import-form">
                 <input 
                   type="text" 
-                  placeholder="https://www.airbnb.com/rooms/..." 
+                  placeholder="https://www.platform.com/rooms/..." 
                   value={airbnbUrl}
                   onChange={(e) => setAirbnbUrl(e.target.value)}
                   className="modal-input"

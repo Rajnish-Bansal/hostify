@@ -130,9 +130,9 @@ const getInitialListings = () => {
     {
       id: 1700001,
       hostId: 1,
-      title: "The Oak Street Loft",
-      type: "Apartment",
-      location: "Phuket, Thailand",
+      title: "Seashore Heritage Villa",
+      type: "Villa",
+      location: "Goa, India",
       price: 12500,
       status: "Active",
       rating: 4.8,
@@ -144,9 +144,9 @@ const getInitialListings = () => {
     {
       id: 1700002,
       hostId: 1,
-      title: "Modern Urban Retreat",
-      type: "Condo",
-      location: "Bali, Indonesia",
+      title: "Ganges View Yoga Retreat",
+      type: "Retreat",
+      location: "Rishikesh, Uttarakhand",
       price: 18500,
       status: "Active",
       rating: 4.9,
@@ -158,9 +158,9 @@ const getInitialListings = () => {
     {
       id: 1700003,
       hostId: 1,
-      title: "Serene Coastal Villa",
-      type: "Villa",
-      location: "Maldives",
+      title: "Lake Pichola Palace Stay",
+      type: "Palace",
+      location: "Udaipur, Rajasthan",
       price: 45000,
       status: "Active",
       rating: 5.0,
@@ -382,9 +382,9 @@ export const HostProvider = ({ children }) => {
     setListings(prev => prev.filter(l => l.id != id));
   };
 
-  const importAirbnbListing = async (url) => {
+  const importExternalListing = async (url) => {
     try {
-      const response = await fetch('/api/listings/import-airbnb', {
+      const response = await fetch('/api/listings/import-external', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url })
@@ -466,7 +466,7 @@ export const HostProvider = ({ children }) => {
       approveListing,
       rejectListing,
       activateUnits,
-      importAirbnbListing,
+      importExternalListing,
       refreshListings
     }}>
       {children}

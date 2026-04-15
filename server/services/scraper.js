@@ -4,10 +4,10 @@ const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 puppeteer.use(StealthPlugin());
 
 /**
- * Scrapes an Airbnb URL for property details.
- * Optimized for Airbnb's 2024/2026 data structure.
+ * Scrapes an external URL for property details.
+ * Optimized for standard property data structures.
  */
-async function scrapeAirbnb(url) {
+async function scrapeExternal(url) {
   let browser;
   try {
     browser = await puppeteer.launch({
@@ -21,12 +21,10 @@ async function scrapeAirbnb(url) {
     await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
     // Go to the URL
-    console.log(`[Scraper] Visiting: ${url}`);
+    console.log(`[Scraper] Visiting: \${url}`);
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
 
     // Extract the JSON data from the script tag with id="env-setup-dot-json" or "__INITIAL_STATE__"
-    // Airbnb often embeds the full state in a script tag.
-    // Extract the JSON data from script tags
     // Extract the JSON data from script tags
     const dataState = await page.evaluate(() => {
       // 1. Try script#data-deferred-state-0 (Very common in 2024/2026)
@@ -70,16 +68,16 @@ async function scrapeAirbnb(url) {
 
     if (!dataState) {
       const timestamp = new Date().getTime();
-      const screenshotPath = `error_screenshot_${timestamp}.png`;
-      const htmlPath = `error_page_${timestamp}.html`;
+      const screenshotPath = \`error_screenshot_\${timestamp}.png\`;
+      const htmlPath = \`error_page_\${timestamp}.html\`;
       
-      console.error(`[Scraper] Extraction failed. Capturing debug info to ${screenshotPath} and ${htmlPath}`);
+      console.error(\`[Scraper] Extraction failed. Capturing debug info to \${screenshotPath} and \${htmlPath}\`);
       
       await page.screenshot({ path: screenshotPath }).catch(e => console.error('Failed to take screenshot', e.message));
       const html = await page.content();
       require('fs').writeFileSync(htmlPath, html);
       
-      throw new Error('Failed to extract data state from Airbnb page');
+      throw new Error('Failed to extract data state from property page');
     }
 
     // --- MAPPING LOGIC ---
@@ -146,11 +144,11 @@ async function scrapeAirbnb(url) {
     };
 
   } catch (error) {
-    console.error(`[Scraper Error]: ${error.message}`);
+    console.error(\`[Scraper Error]: \${error.message}\`);
     throw error;
   } finally {
     if (browser) await browser.close();
   }
 }
 
-module.exports = { scrapeAirbnb };
+module.exports = { scrapeExternal };

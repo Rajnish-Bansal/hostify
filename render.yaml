@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: hostify-airbnb
+    name: hostify-server
     runtime: node
     plan: free
     buildCommand: "npm run build"
