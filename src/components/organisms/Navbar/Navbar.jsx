@@ -106,11 +106,13 @@ const Navbar = ({ onLogoClick, scrolled }) => {
             
             {/* Globe icon removed */}
             
-            <Link to="/notifications" className="notifications-btn">
-               <span className="notifications-icon-wrapper">
-                 <Bell size={18} />
-               </span>
-            </Link>
+            {user && (
+              <Link to="/notifications" className="notifications-btn">
+                 <span className="notifications-icon-wrapper">
+                   <Bell size={18} />
+                 </span>
+              </Link>
+            )}
 
             <div className="user-menu-container" ref={userMenuRef}>
                 <div 
