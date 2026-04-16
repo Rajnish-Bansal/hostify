@@ -20,14 +20,39 @@ body {
 
 .responsive-container {
   width: 100%;
-  max-width: 1440px;
+  max-width: var(--breakpoint-2xl);
   margin: 0 auto;
   padding: 0 var(--spacing-md);
 }
 
 @media (min-width: 768px) {
   .responsive-container {
-    padding: 0 var(--spacing-lg);
+    padding: 0 var(--spacing-xl);
+  }
+}
+
+/* Responsive Utilities */
+.hide-on-mobile {
+  @media (max-width: 768px) {
+    display: none !important;
+  }
+}
+
+.show-only-mobile {
+  @media (min-width: 769px) {
+    display: none !important;
+  }
+}
+
+.text-center-mobile {
+  @media (max-width: 768px) {
+    text-align: center !important;
+  }
+}
+
+.flex-column-mobile {
+  @media (max-width: 768px) {
+    flex-direction: column !important;
   }
 }
 

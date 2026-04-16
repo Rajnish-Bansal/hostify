@@ -128,35 +128,38 @@ const Navbar = ({ onLogoClick, scrolled }) => {
                 </div>
 
                 {isUserMenuOpen && (
-                  <div className="user-dropdown-menu">
-                     {user ? (
-                        <>
-                      {/* Name Display */}
-                      <Link to="/profile" className="menu-item-bold user-profile-link" onClick={() => setIsUserMenuOpen(false)}>
-                        {user.name || 'User'}
-                      </Link>
-                      <div className="menu-item user-email-display">{user.email}</div>
-                      <div className="menu-divider"></div>
-                      
-                      <Link to="/wallet" className="menu-item-bold" style={{textDecoration: 'none', display: 'block', color: 'inherit'}} onClick={() => setIsUserMenuOpen(false)}>Wallet</Link>
-                      <div className="menu-divider"></div>
-                      <Link to="/account" className="menu-item" style={{textDecoration: 'none'}}>Account</Link>
-                       <div className="menu-item" onClick={() => {
-                          logout();
-                          setIsUserMenuOpen(false);
-                       }}>Log out</div>
-                        </>
-                     ) : (
-                        <>
-
-                          <div className="menu-item-bold" onClick={() => { openAuthModal(); setIsUserMenuOpen(false); }}>Log in</div>
-                          <div className="menu-item" onClick={() => { openAuthModal(); setIsUserMenuOpen(false); }}>Sign up</div>
-                          <div className="menu-divider"></div>
-                          <div className="menu-item" onClick={() => { setRedirectAfterLogin('/become-a-host'); openAuthModal(); setIsUserMenuOpen(false); }}>Become a host</div>
-                          <div className="menu-item">Help Center</div>
-                        </>
-                     )}
-                  </div>
+                  <>
+                    <div className="mobile-menu-overlay show-only-mobile" onClick={() => setIsUserMenuOpen(false)}></div>
+                    <div className="user-dropdown-menu">
+                       {user ? (
+                          <>
+                        {/* Name Display */}
+                        <Link to="/profile" className="menu-item-bold user-profile-link" onClick={() => setIsUserMenuOpen(false)}>
+                          {user.name || 'User'}
+                        </Link>
+                        <div className="menu-item user-email-display">{user.email}</div>
+                        <div className="menu-divider"></div>
+                        
+                        <Link to="/wallet" className="menu-item-bold" style={{textDecoration: 'none', display: 'block', color: 'inherit'}} onClick={() => setIsUserMenuOpen(false)}>Wallet</Link>
+                        <div className="menu-divider"></div>
+                        <Link to="/account" className="menu-item" style={{textDecoration: 'none'}}>Account</Link>
+                         <div className="menu-item" onClick={() => {
+                            logout();
+                            setIsUserMenuOpen(false);
+                         }}>Log out</div>
+                          </>
+                       ) : (
+                          <>
+  
+                            <div className="menu-item-bold" onClick={() => { openAuthModal(); setIsUserMenuOpen(false); }}>Log in</div>
+                            <div className="menu-item" onClick={() => { openAuthModal(); setIsUserMenuOpen(false); }}>Sign up</div>
+                            <div className="menu-divider"></div>
+                            <div className="menu-item" onClick={() => { setRedirectAfterLogin('/become-a-host'); openAuthModal(); setIsUserMenuOpen(false); }}>Become a host</div>
+                            <div className="menu-item">Help Center</div>
+                          </>
+                       )}
+                    </div>
+                  </>
                 )}
             </div>
           </div>

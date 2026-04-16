@@ -2,19 +2,74 @@
 
 .dashboard-layout {
   display: flex;
+  flex-direction: column;
   min-height: 100vh;
   background: var(--bg-secondary);
   font-family: var(--font-body);
 }
 
+@media (min-width: 1024px) {
+  .dashboard-layout {
+    flex-direction: row;
+  }
+}
+
 /* Sidebar */
 .dashboard-sidebar {
+  display: none;
   width: 260px;
   background: white;
   border-right: 1px solid var(--border-light);
-  display: flex;
   flex-direction: column;
   padding: 24px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-sidebar {
+    display: flex;
+  }
+}
+
+/* Mobile Host Nav */
+.mobile-host-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  justify-content: space-around;
+  padding: 12px var(--spacing-md) calc(12px + env(safe-area-inset-bottom));
+  z-index: 2000;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 600;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mobile-nav-item.active {
+  color: var(--primary);
+}
+
+@media (min-width: 1024px) {
+  .mobile-host-nav {
+    display: none;
+  }
 }
 
 /* Sub-Tab Switcher Financials */
@@ -149,8 +204,16 @@
 /* Main Content */
 .dashboard-main {
   flex: 1;
-  padding: 40px;
+  padding: 24px;
   overflow-y: auto;
+  padding-bottom: 100px; /* Space for mobile nav */
+}
+
+@media (min-width: 1024px) {
+  .dashboard-main {
+    padding: 40px;
+    padding-bottom: 40px;
+  }
 }
 
 .main-header {
@@ -187,9 +250,23 @@
 /* Stats Grid */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-  margin-bottom: 40px;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+@media (min-width: 640px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1200px) {
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-bottom: 40px;
+  }
 }
 
 .stat-card {
@@ -778,11 +855,16 @@
 
 /* Bookings Table */
 /* Bookings Table */
+.host-txn-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 12px;
+  border: 1px solid #ebebeb;
+}
+
 .host-txn-table {
   background: white;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid #ebebeb;
   min-width: 800px; /* Ensure table doesn't collapse too much */
 }
 

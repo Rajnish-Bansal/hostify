@@ -1653,45 +1653,47 @@ const HostDashboard = () => {
 
         {activeTab === 'bookings' && (
            <div className="bookings-content">
-              <div className="bookings-table">
-                 <div className="table-header">
-                    <div>Sl No.</div>
-                    <div>Guest</div>
-                    <div>Dates</div>
-                    <div>Listing</div>
-                    <div>Price</div>
-                    <div>Status</div>
-                    <div>Action</div>
-                 </div>
-                 {reservations.map((res, index) => (
-                    <div key={res.id} className="table-row">
-                       <div className="col-sl">{index + 1}</div>
-                       <div className="col-guest">
-                          <img src={res.img} alt="" className="guest-avatar" />
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                             <span style={{ fontWeight: '600' }}>{res.guest}</span>
-                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#717171' }}>
-                                <Star size={10} fill="var(--primary)" color="var(--primary)" />
-                                <span>{res.rating || 'New'}</span>
+              <div className="host-txn-table-wrapper">
+                 <div className="bookings-table">
+                    <div className="table-header">
+                       <div>Sl No.</div>
+                       <div>Guest</div>
+                       <div>Dates</div>
+                       <div>Listing</div>
+                       <div>Price</div>
+                       <div>Status</div>
+                       <div>Action</div>
+                    </div>
+                    {reservations.map((res, index) => (
+                       <div key={res.id} className="table-row">
+                          <div className="col-sl">{index + 1}</div>
+                          <div className="col-guest">
+                             <img src={res.img} alt="" className="guest-avatar" />
+                             <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontWeight: '600' }}>{res.guest}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#717171' }}>
+                                   <Star size={10} fill="var(--primary)" color="var(--primary)" />
+                                   <span>{res.rating || 'New'}</span>
+                                </div>
                              </div>
                           </div>
+                          <div className="col-date">{res.dates}</div>
+                          <div className="col-listing">{listings[0]?.title || 'Seaside Villa'}</div>
+                          <div className="col-price">{res.price}</div>
+                          <div className="col-status"><span className={`status-dot ${res.status.toLowerCase()}`}></span> {res.status}</div>
+                          <div className="col-action">
+                             {res.status === 'Pending' ? (
+                                <>
+                                  <button className="btn-accept">Accept</button>
+                                  <button className="btn-decline">Decline</button>
+                                </>
+                             ) : (
+                                <button className="btn-link" onClick={() => handleMessageGuest(res)}>Message</button>
+                             )}
+                          </div>
                        </div>
-                       <div className="col-date">{res.dates}</div>
-                       <div className="col-listing">{listings[0]?.title || 'Seaside Villa'}</div>
-                       <div className="col-price">{res.price}</div>
-                       <div className="col-status"><span className={`status-dot ${res.status.toLowerCase()}`}></span> {res.status}</div>
-                       <div className="col-action">
-                          {res.status === 'Pending' ? (
-                             <>
-                               <button className="btn-accept">Accept</button>
-                               <button className="btn-decline">Decline</button>
-                             </>
-                          ) : (
-                             <button className="btn-link" onClick={() => handleMessageGuest(res)}>Message</button>
-                          )}
-                       </div>
-                    </div>
-                 ))}
+                    ))}
+                 </div>
               </div>
            </div>
         )}
@@ -2025,91 +2027,93 @@ const HostDashboard = () => {
                          </div>
                       </div>
                      
-                     <div className="premium-txn-list">
-                        {loadingPayouts ? (
-                          <div className="loading-shimmer-payouts">Loading financial records...</div>
-                        ) : (payoutData?.transactions || []).filter(tx => (searchParams.get('subTab') || 'ledger') === 'subscriptions' ? tx.category === 'Subscription' : true).length > 0 ? (
-                          (payoutData?.transactions || [])
-                            .filter(tx => (searchParams.get('subTab') || 'ledger') === 'subscriptions' ? tx.category === 'Subscription' : true)
-                            .map(tx => (
-                            <div key={tx._id || tx.id} className="premium-txn-item">
-                               <div className="txn-info-group">
-                                  <div className={`txn-icon-circle ${tx.type?.toLowerCase() || 'credit'}`}>
-                                    {tx.type === 'Credit' ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
-                                  </div>
-                                  <div className="txn-main-details">
-                                     {(() => {
-                                         const propertyName = tx.metadata?.propertyName || tx.listingId?.title || tx.propertyName || '';
-                                         const plan = (tx.metadata?.planName || 'Monthly').replace(/\s*Activation\s*/i, '').trim();
-                                         let resolvedPlan = plan;
-                                         let resolvedProperty = propertyName;
-
-                                         if (!propertyName) {
-                                           const raw = tx.description || '';
-                                           const legacyMatch = raw.match(/Subscription to .+ Plan for property:\s*(.+)/i);
-                                           if (legacyMatch) resolvedProperty = legacyMatch[1];
-                                           else {
-                                             const midotMatch = raw.match(/Monthly(?:\s*Activation)?\s*·\s*(.+)/i);
-                                             if (midotMatch) resolvedProperty = midotMatch[1];
-                                           }
-                                         }
-
-                                         return (
-                                           <>
-                                             <div className="txn-title">{resolvedPlan}</div>
-                                             {resolvedProperty && <div className="txn-property-name">{resolvedProperty}</div>}
-                                           </>
-                                         );
-                                       })()}
-                                     <div className="txn-meta">{new Date(tx.createdAt || tx.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
-                                  </div>
-                               </div>
-                               <div className="txn-financial-group" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '20px' }}>
-                                  <div className="txn-financial-details" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
-                                     <div className={`txn-amount-net ${tx.type?.toLowerCase() || 'credit'}`}>
-                                       ₹{(tx.amount || tx.netAmount)?.toLocaleString('en-IN')}
+                      <div className="host-txn-table-wrapper">
+                        <div className="premium-txn-list">
+                           {loadingPayouts ? (
+                             <div className="loading-shimmer-payouts">Loading financial records...</div>
+                           ) : (payoutData?.transactions || []).filter(tx => (searchParams.get('subTab') || 'ledger') === 'subscriptions' ? tx.category === 'Subscription' : true).length > 0 ? (
+                             (payoutData?.transactions || [])
+                               .filter(tx => (searchParams.get('subTab') || 'ledger') === 'subscriptions' ? tx.category === 'Subscription' : true)
+                               .map(tx => (
+                               <div key={tx._id || tx.id} className="premium-txn-item">
+                                  <div className="txn-info-group">
+                                     <div className={`txn-icon-circle ${tx.type?.toLowerCase() || 'credit'}`}>
+                                       {tx.type === 'Credit' ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
                                      </div>
-                                     <div className={`txn-status-badge ${tx.status?.toLowerCase() === 'completed' ? 'paid' : (tx.status?.toLowerCase() || 'completed')}`}>
-                                        {tx.status || 'Completed'}
+                                     <div className="txn-main-details">
+                                        {(() => {
+                                            const propertyName = tx.metadata?.propertyName || tx.listingId?.title || tx.propertyName || '';
+                                            const plan = (tx.metadata?.planName || 'Monthly').replace(/\s*Activation\s*/i, '').trim();
+                                            let resolvedPlan = plan;
+                                            let resolvedProperty = propertyName;
+   
+                                            if (!propertyName) {
+                                              const raw = tx.description || '';
+                                              const legacyMatch = raw.match(/Subscription to .+ Plan for property:\s*(.+)/i);
+                                              if (legacyMatch) resolvedProperty = legacyMatch[1];
+                                              else {
+                                                const midotMatch = raw.match(/Monthly(?:\s*Activation)?\s*·\s*(.+)/i);
+                                                if (midotMatch) resolvedProperty = midotMatch[1];
+                                              }
+                                            }
+   
+                                            return (
+                                              <>
+                                                <div className="txn-title">{resolvedPlan}</div>
+                                                {resolvedProperty && <div className="txn-property-name">{resolvedProperty}</div>}
+                                              </>
+                                            );
+                                          })()}
+                                        <div className="txn-meta">{new Date(tx.createdAt || tx.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
                                      </div>
                                   </div>
-                                  
-                                  <button 
-                                     className="btn-download-invoice"
-                                     onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(tx); }}
-                                     title="Download Invoice"
-                                     style={{
-                                        background: 'transparent',
-                                        border: '1px solid #e2e8f0',
-                                        borderRadius: '8px',
-                                        padding: '10px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: '#64748b',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                     }}
-                                     onMouseEnter={(e) => {
-                                        e.currentTarget.style.borderColor = '#94a3b8';
-                                        e.currentTarget.style.color = '#334155';
-                                        e.currentTarget.style.background = '#f8fafc';
-                                     }}
-                                     onMouseLeave={(e) => {
-                                        e.currentTarget.style.borderColor = '#e2e8f0';
-                                        e.currentTarget.style.color = '#64748b';
-                                        e.currentTarget.style.background = 'transparent';
-                                     }}
-                                  >
-                                     <Download size={18} />
-                                  </button>
+                                  <div className="txn-financial-group" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '20px' }}>
+                                     <div className="txn-financial-details" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                                        <div className={`txn-amount-net ${tx.type?.toLowerCase() || 'credit'}`}>
+                                          ₹{(tx.amount || tx.netAmount)?.toLocaleString('en-IN')}
+                                        </div>
+                                        <div className={`txn-status-badge ${tx.status?.toLowerCase() === 'completed' ? 'paid' : (tx.status?.toLowerCase() || 'completed')}`}>
+                                           {tx.status || 'Completed'}
+                                        </div>
+                                     </div>
+                                     
+                                     <button 
+                                        className="btn-download-invoice"
+                                        onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(tx); }}
+                                        title="Download Invoice"
+                                        style={{
+                                           background: 'transparent',
+                                           border: '1px solid #e2e8f0',
+                                           borderRadius: '8px',
+                                           padding: '10px',
+                                           display: 'flex',
+                                           alignItems: 'center',
+                                           justifyContent: 'center',
+                                           color: '#64748b',
+                                           cursor: 'pointer',
+                                           transition: 'all 0.2s ease',
+                                        }}
+                                        onMouseEnter={(e) => {
+                                           e.currentTarget.style.borderColor = '#94a3b8';
+                                           e.currentTarget.style.color = '#334155';
+                                           e.currentTarget.style.background = '#f8fafc';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                           e.currentTarget.style.borderColor = '#e2e8f0';
+                                           e.currentTarget.style.color = '#64748b';
+                                           e.currentTarget.style.background = 'transparent';
+                                        }}
+                                     >
+                                        <Download size={18} />
+                                     </button>
+                                  </div>
                                </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="empty-payouts">No transactions found yet.</div>
-                        )}
-                     </div>
+                             ))
+                           ) : (
+                             <div className="empty-payouts">No transactions found yet.</div>
+                           )}
+                        </div>
+                      </div>
                   </div>
 
                   {/* Bank & Tax Details Section */}
@@ -2519,6 +2523,44 @@ const HostDashboard = () => {
 
 
 
+      {/* Mobile Navigation Bar */}
+      <div className="mobile-host-nav">
+        <button 
+          className={`mobile-nav-item ${activeTab === 'overview' ? 'active' : ''}`}
+          onClick={() => setActiveTab('overview')}
+        >
+          <TrendingUp size={20} />
+          <span>General</span>
+        </button>
+        <button 
+          className={`mobile-nav-item ${activeTab === 'listings' ? 'active' : ''}`}
+          onClick={() => setActiveTab('listings')}
+        >
+          <Menu size={20} />
+          <span>Properties</span>
+        </button>
+        <button 
+          className={`mobile-nav-item ${activeTab === 'bookings' ? 'active' : ''}`}
+          onClick={() => setActiveTab('bookings')}
+        >
+          <Calendar size={20} />
+          <span>Bookings</span>
+        </button>
+        <button 
+          className={`mobile-nav-item ${activeTab === 'messages' ? 'active' : ''}`}
+          onClick={() => setActiveTab('messages')}
+        >
+          <MessageSquare size={20} />
+          <span>Inbox</span>
+        </button>
+        <button 
+          className={`mobile-nav-item ${activeTab === 'profile' ? 'active' : ''}`}
+          onClick={() => setActiveTab('profile')}
+        >
+          <UserIcon size={20} />
+          <span>Profile</span>
+        </button>
+      </div>
     </div>
   );
 };

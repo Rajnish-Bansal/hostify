@@ -16,13 +16,19 @@
 }
 
 .navbar-container {
-  max-width: 1440px;
+  max-width: var(--breakpoint-2xl);
   margin: 0 auto;
-  padding: 0 var(--spacing-xl);
+  padding: 0 var(--spacing-md);
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+@media (min-width: 768px) {
+  .navbar-container {
+    padding: 0 var(--spacing-xl);
+  }
 }
 
 .navbar-logo {
@@ -46,7 +52,7 @@
   white-space: nowrap;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1024px) {
   .navbar-made-in-india {
     display: none;
   }
@@ -114,12 +120,12 @@
 @media (max-width: 768px) {
   .navbar-search-pill {
     min-width: 40px;
-    margin: 0 8px;
-    padding: 6px;
+    margin: 0 4px;
+    padding: 6px 10px;
   }
   
   .pill-text {
-    display: none;
+    font-size: 13px;
   }
 }
 
@@ -249,22 +255,39 @@
   margin: 12px 0;
 }
 
+.mobile-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(2px);
+  z-index: 999;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
   .navbar {
     height: 70px;
   }
   
-  .navbar-container {
-    padding: 0 var(--spacing-md);
-  }
-  
   .logo-text {
-    font-size: 20px;
+    font-size: 18px;
+  }
+
+  .logo-icon {
+    font-size: 22px;
   }
   
   .navbar-user {
-    gap: var(--spacing-sm);
+    gap: var(--spacing-md);
   }
   
   .host-link {
@@ -272,27 +295,38 @@
   }
   
   .user-menu-button {
-    padding: 6px 6px 6px 12px;
+    padding: 6px 6px 6px 10px;
+    gap: 6px;
   }
   
   .user-dropdown-menu {
-    width: 220px;
-    right: -10px;
+    width: 280px;
+    right: 0;
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
+    animation: slideUpMobile 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
-@media (max-width: 450px) {
+@keyframes slideUpMobile {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@media (max-width: 480px) {
   .logo-text {
     display: none; /* Only show icon on very small screens */
   }
   
-  .navbar-container {
-    padding: 0 var(--spacing-sm);
-  }
-  
   .user-menu-button {
-    padding: 6px;
+    padding: 4px;
     border: none;
+    box-shadow: none !important;
   }
 
   .user-menu-button span, .user-menu-button .menu-icon {
@@ -300,11 +334,11 @@
   }
 
   .navbar-user {
-    gap: 8px;
+    gap: 4px;
   }
 
-  .notifications-btn, .globe-button {
-    display: none;
+  .notifications-btn {
+    padding: 8px;
   }
 }
 

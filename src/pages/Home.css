@@ -7,12 +7,18 @@
 
 /* Compact Search Header */
 .compact-search-container {
-  padding: 96px var(--spacing-xl) var(--spacing-xl);
+  padding: 120px var(--spacing-md) var(--spacing-xl);
   background: linear-gradient(to bottom, #f0fafa, var(--bg-primary));
   display: flex;
   justify-content: center;
   align-items: center;
   border-bottom: 1px solid var(--border-light);
+}
+
+@media (min-width: 768px) {
+  .compact-search-container {
+    padding: 140px var(--spacing-xl) var(--spacing-2xl);
+  }
 }
 
 /* Sticky Sub-Navbar */
@@ -149,15 +155,39 @@
 /* Listings Grid */
 .listings-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: var(--spacing-xl);
+  grid-template-columns: repeat(1, 1fr);
+  gap: var(--spacing-lg);
   margin-top: var(--spacing-lg);
 }
 
-@media (max-width: 640px) {
+@media (min-width: 550px) {
   .listings-grid {
-    grid-template-columns: 1fr;
-    gap: var(--spacing-lg);
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-xl);
+  }
+}
+
+@media (min-width: 950px) {
+  .listings-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1200px) {
+  .listings-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (min-width: 1600px) {
+  .listings-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+@media (min-width: 2000px) {
+  .listings-grid {
+    grid-template-columns: repeat(6, 1fr);
   }
 }
 

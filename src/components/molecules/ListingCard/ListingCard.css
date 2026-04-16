@@ -139,6 +139,16 @@
   box-shadow: 0 4px 12px var(--primary-soft);
 }
 
+@media (max-width: 768px) {
+  .listing-location {
+    font-size: 16px;
+  }
+  
+  .price-bold {
+    font-size: 16px;
+  }
+}
+
 .recently-viewed-badge {
   position: absolute;
   top: 12px;

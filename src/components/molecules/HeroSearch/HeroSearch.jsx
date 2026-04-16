@@ -117,24 +117,28 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
             }}
           />
           {showSuggestions && suggestions.length > 0 && activeField === 'destination' && (
-              <div className="search-suggestions">
-                  {suggestions.map((loc, index) => (
-                      <div 
-                        key={index} 
-                        className="suggestion-item"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setDestination(loc);
-                            setShowSuggestions(false);
-                        }}
-                      >
-                          <div className="suggestion-icon">
-                              <MapPin size={18} />
-                          </div>
-                          <span>{loc}</span>
-                      </div>
-                  ))}
-              </div>
+              <>
+                <div className="mobile-search-overlay show-only-mobile" onClick={() => setActiveField(null)}></div>
+                <div className="search-suggestions">
+                    {suggestions.map((loc, index) => (
+                        <div 
+                          key={index} 
+                          className="suggestion-item"
+                          onClick={(e) => {
+                              e.stopPropagation();
+                              setDestination(loc);
+                              setShowSuggestions(false);
+                              setActiveField(null);
+                          }}
+                        >
+                            <div className="suggestion-icon">
+                                <MapPin size={18} />
+                            </div>
+                            <span>{loc}</span>
+                        </div>
+                    ))}
+                </div>
+              </>
           )}
         </div>
         
@@ -210,61 +214,68 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
 
           {/* Guest Popover */}
           {activeField === 'guests' && (
-              <div 
-                className="guest-popover" 
-                ref={guestPopoverRef}
-                onClick={(e) => e.stopPropagation()} 
-              >
-                  {/* Adults */}
-                  <div className="guest-row">
-                      <div className="guest-info">
-                          <h4>Adults</h4>
-                          <p>Ages 13 or above</p>
-                      </div>
-                      <div className="guest-controls">
-                          <button 
-                            className="guest-btn" 
-                            disabled={guestCounts.adults <= 1}
-                            onClick={() => updateGuests('adults', 'decrease')}
-                          >
-                              <Minus size={16} />
-                          </button>
-                          <span className="guest-count">{guestCounts.adults}</span>
-                          <button 
-                            className="guest-btn" 
-                            disabled={totalGuests >= 16}
-                            onClick={() => updateGuests('adults', 'increase')}
-                          >
-                              <Plus size={16} />
-                          </button>
-                      </div>
-                  </div>
+              <>
+                <div className="mobile-search-overlay show-only-mobile" onClick={() => setActiveField(null)}></div>
+                <div 
+                  className="guest-popover" 
+                  ref={guestPopoverRef}
+                  onClick={(e) => e.stopPropagation()} 
+                >
+                    {/* adults etc */}
+                    <div className="guest-row">
+                        <div className="guest-info">
+                            <h4>Adults</h4>
+                            <p>Ages 13 or above</p>
+                        </div>
+                        <div className="guest-controls">
+                            <button 
+                              className="guest-btn" 
+                              disabled={guestCounts.adults <= 1}
+                              onClick={() => updateGuests('adults', 'decrease')}
+                            >
+                                <Minus size={16} />
+                            </button>
+                            <span className="guest-count">{guestCounts.adults}</span>
+                            <button 
+                              className="guest-btn" 
+                              disabled={totalGuests >= 16}
+                              onClick={() => updateGuests('adults', 'increase')}
+                            >
+                                <Plus size={16} />
+                            </button>
+                        </div>
+                    </div>
 
-                  {/* Children */}
-                  <div className="guest-row" style={{ marginTop: '16px' }}>
-                      <div className="guest-info">
-                          <h4>Children</h4>
-                          <p>Ages 2-12</p>
-                      </div>
-                      <div className="guest-controls">
-                          <button 
-                            className="guest-btn" 
-                            disabled={guestCounts.children <= 0}
-                            onClick={() => updateGuests('children', 'decrease')}
-                          >
-                              <Minus size={16} />
-                          </button>
-                          <span className="guest-count">{guestCounts.children}</span>
-                          <button 
-                            className="guest-btn" 
-                            disabled={totalGuests >= 16}
-                            onClick={() => updateGuests('children', 'increase')}
-                          >
-                              <Plus size={16} />
-                          </button>
-                      </div>
-                  </div>
-              </div>
+                    {/* Children */}
+                    <div className="guest-row" style={{ marginTop: '16px' }}>
+                        <div className="guest-info">
+                            <h4>Children</h4>
+                            <p>Ages 2-12</p>
+                        </div>
+                        <div className="guest-controls">
+                            <button 
+                              className="guest-btn" 
+                              disabled={guestCounts.children <= 0}
+                              onClick={() => updateGuests('children', 'decrease')}
+                            >
+                                <Minus size={16} />
+                            </button>
+                            <span className="guest-count">{guestCounts.children}</span>
+                            <button 
+                              className="guest-btn" 
+                              disabled={totalGuests >= 16}
+                              onClick={() => updateGuests('children', 'increase')}
+                            >
+                                <Plus size={16} />
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <button className="btn btn-primary show-only-mobile" style={{width: '100%', marginTop: '24px', height: '48px'}} onClick={() => setActiveField(null)}>
+                      Apply
+                    </button>
+                </div>
+              </>
           )}
         </div>
 

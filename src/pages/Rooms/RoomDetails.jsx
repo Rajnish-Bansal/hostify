@@ -437,13 +437,22 @@ const RoomDetails = () => {
            {/* Right Column: Reservation Sidebar */}
            <div className="room-sidebar-wrapper">
               <div className="reservation-card">
-                 <div className="card-header">
+                 <div className="card-header hide-on-mobile">
                     <div className="price-tag">
                        <span className="price-large">₹{listing.price.toLocaleString('en-IN')}</span> <span className="night-text">night</span>
                     </div>
                  </div>
 
-                 <div className="date-picker-box">
+                 <div className="mobile-price-display show-only-mobile">
+                    <div className="price-tag">
+                       <span className="price-large">₹{listing.price.toLocaleString('en-IN')}</span> <span className="night-text">night</span>
+                    </div>
+                    <div className="mobile-dates-summary">
+                       {format(startDate, 'MMM d')} – {format(endDate, 'MMM d')}
+                    </div>
+                 </div>
+
+                 <div className="date-picker-box hide-on-mobile">
                     <div className="date-inputs">
                        <div className="date-input border-right">
                           <label>CHECK-IN</label>
@@ -491,7 +500,7 @@ const RoomDetails = () => {
 
                  <div className="no-charge-text">You won't be charged yet</div>
 
-                 <div className="price-breakdown">
+                 <div className="price-breakdown hide-on-mobile">
                      <div className="pb-row">
                         <span>
                           {priceStats.weekendNights > 0 ? (
@@ -514,7 +523,7 @@ const RoomDetails = () => {
                      </div>
                   </div>
 
-                  <div className="total-row">
+                  <div className="total-row hide-on-mobile">
                      <span>Total (incl. taxes)</span>
                      <span>₹{priceStats.totalPrice.toLocaleString('en-IN')}</span>
                   </div>
