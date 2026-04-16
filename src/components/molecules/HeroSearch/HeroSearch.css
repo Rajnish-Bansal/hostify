@@ -322,14 +322,15 @@
 
 @media (max-width: 480px) {
   .hero-search-button {
-    padding: 0;
-    width: 48px;
+    padding: 0 16px;
+    width: auto;
     height: 48px;
-    border-radius: 50%;
+    border-radius: var(--radius-lg);
   }
   
   .search-btn-text {
-    display: none;
+    display: inline-block;
+    font-size: 14px;
   }
   
   .hero-search {

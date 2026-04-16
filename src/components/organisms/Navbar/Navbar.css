@@ -320,7 +320,8 @@
 
 @media (max-width: 480px) {
   .logo-text {
-    display: none; /* Only show icon on very small screens */
+    display: block;
+    font-size: 16px;
   }
   
   .user-menu-button {
