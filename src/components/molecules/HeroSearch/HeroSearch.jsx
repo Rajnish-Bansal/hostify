@@ -144,7 +144,7 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
         
         <div className="hero-divider"></div>
         
-        {/* Date In */}
+        {/* Dates (Merged Check-In/Out) */}
         <div 
             className={`hero-search-group ${activeField === 'dates' ? 'active' : ''}`}
             onClick={(e) => {
@@ -152,7 +152,7 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
                 setActiveField(prev => prev === 'dates' ? null : 'dates');
             }}
         >
-          <label>Check In</label>
+          <label>Dates</label>
           <div className="datepicker-wrapper">
               <DatePicker
                 selectsRange={true}
@@ -167,33 +167,12 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
                 onFocus={() => setActiveField('dates')}
                 customInput={
                     <input 
-                        value={startDate ? startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''} 
+                        value={startDate ? (endDate ? `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })) : ''} 
                         readOnly 
-                        placeholder="08 Nov 2024"
+                        placeholder="Add dates"
                     />
                 }
                />
-          </div>
-        </div>
-
-        <div className="hero-divider"></div>
-
-        {/* Date Out */}
-        <div 
-            className={`hero-search-group ${activeField === 'dates' ? 'active' : ''}`}
-            onClick={(e) => {
-                e.stopPropagation();
-                setActiveField(prev => prev === 'dates' ? null : 'dates');
-            }}
-        >
-          <label>Check Out</label>
-          <div className="datepicker-wrapper">
-              <input 
-                  value={endDate ? endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''} 
-                  readOnly 
-                  placeholder="12 Nov 2024"
-                  onClick={() => setActiveField('dates')}
-              />
           </div>
         </div>
         
