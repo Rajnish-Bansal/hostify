@@ -21,9 +21,8 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
   // Guest State
   const [guestCounts, setGuestCounts] = useState({ adults: 1, children: 0 });
 
-  
+  const [isMobileExpanded, setIsMobileExpanded] = useState(false);
   const totalGuests = guestCounts.adults + guestCounts.children;
-
   const [activeField, setActiveField] = useState(null);
   const guestPopoverRef = useRef(null);
   const containerRef = useRef(null);
@@ -32,8 +31,10 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
     const handleClickOutside = (event) => {
       if (containerRef.current && !containerRef.current.contains(event.target)) {
         setActiveField(null);
+        // We might want to collapse back on click outside, but usually Airbnb keeps it expanded once opened.
       }
     };
+    // ... rest of effect
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
@@ -81,8 +82,22 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
   };
 
   return (
-    <div className="hero-search-container" ref={containerRef}>
-      <div className="hero-search">
+    <div className={`hero-search-container ${isMobileExpanded ? 'is-expanded' : ''}`} ref={containerRef}>
+      {/* Mobile Collapsed Pill */}
+      {!isMobileExpanded && (
+        <div className="hero-search-mobile-pill show-only-mobile" onClick={() => setIsMobileExpanded(true)}>
+          <div className="pill-icon">
+            <Search size={18} strokeWidth={2.5} />
+          </div>
+          <div className="pill-info">
+            <span className="pill-title">Start your search</span>
+            <span className="pill-subtitle">Anywhere • Any week • Add guests</span>
+          </div>
+        </div>
+      )}
+
+      {/* Full Search Bar (Desktop, and Expanded Mobile) */}
+      <div className={`hero-search ${!isMobileExpanded ? 'hide-on-mobile' : 'show-on-mobile'}`}>
         {/* Location */}
         <div 
             className={`hero-search-group ${activeField === 'destination' ? 'active' : ''}`}
@@ -118,7 +133,7 @@ const HeroSearch = ({ onSearch, allLocations = [] }) => {
           />
           {showSuggestions && suggestions.length > 0 && activeField === 'destination' && (
               <>
-                <div className="mobile-search-overlay show-only-mobile" onClick={() => setActiveField(null)}></div>
+                <div className="mobile-search-overlay" onClick={() => setActiveField(null)}></div>
                 <div className="search-suggestions">
                     {suggestions.map((loc, index) => (
                         <div 
