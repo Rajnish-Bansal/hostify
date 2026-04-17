@@ -6,7 +6,7 @@ import 'leaflet/dist/leaflet.css'
 import { HelmetProvider } from 'react-helmet-async'
 import App from './App.jsx'
 
-const GOOGLE_CLIENT_ID = '394699091297-rgiu0h4liutd64iug4h5kh9elnqkjf2i.apps.googleusercontent.com';
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dummy-client-id';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
