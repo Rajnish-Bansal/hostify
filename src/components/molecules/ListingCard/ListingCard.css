@@ -66,6 +66,10 @@
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
+.favorite-button:hover .heart-icon {
+  stroke: var(--primary);
+}
+
 .listing-details {
   display: flex;
   flex-direction: column;
