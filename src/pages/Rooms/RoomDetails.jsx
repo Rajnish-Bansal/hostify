@@ -58,6 +58,7 @@ const RoomDetails = () => {
   
   const [listing, setListing] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isFavorite, setIsFavorite] = useState(false);
 
   // Fetch listing data
   useEffect(() => {
@@ -319,8 +320,11 @@ const RoomDetails = () => {
       showNotification('To save property, please login', 'info');
       return;
     }
-    // Future: implement wishlist logic
-    console.log('Saved listing:', id);
+    
+    setIsFavorite(!isFavorite);
+    if (!isFavorite) {
+      showNotification('Saved to wishlist!', 'success');
+    }
   };
 
   return (
@@ -375,7 +379,18 @@ const RoomDetails = () => {
           </div>
           <div className="right-actions">
             <button className="action-btn"><Share size={16} /> Share</button>
-            <button className="action-btn" onClick={handleSave}><Heart size={16} /> Save</button>
+            <button 
+              className={`action-btn ${isFavorite ? 'active' : ''}`} 
+              onClick={handleSave}
+              style={{ color: isFavorite ? 'var(--primary)' : 'inherit' }}
+            >
+              <Heart 
+                size={16} 
+                fill={isFavorite ? 'var(--primary)' : 'none'} 
+                stroke={isFavorite ? 'var(--primary)' : 'currentColor'} 
+              /> 
+              {isFavorite ? 'Saved' : 'Save'}
+            </button>
           </div>
         </div>
 

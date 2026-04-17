@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Star, Heart, Eye } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
@@ -7,6 +7,7 @@ import './ListingCard.css';
 const ListingCard = ({ id, image, location, distance, price, rating, isRecentlyViewed, ...listing }) => {
   const navigate = useNavigate();
   const { user, openAuthModal, showNotification } = useAuth();
+  const [isFavorite, setIsFavorite] = useState(false);
 
   const handleCardClick = () => {
     navigate(`/rooms/${id}`, {
@@ -55,13 +56,21 @@ const ListingCard = ({ id, image, location, distance, price, rating, isRecentlyV
             e.stopPropagation();
             if (!user) {
               showNotification('To save property, please login', 'info');
-            } else {
-              // Future: implementation for actual saving/wishlist
-              console.log('Saved listing:', id);
+              return;
+            }
+            
+            setIsFavorite(!isFavorite);
+            if (!isFavorite) {
+              showNotification('Saved to wishlist!', 'success');
             }
           }}
         >
-          <Heart size={20} className="heart-icon" />
+          <Heart 
+            size={20} 
+            className="heart-icon" 
+            fill={isFavorite ? 'var(--primary)' : 'none'}
+            stroke={isFavorite ? 'var(--primary)' : 'white'}
+          />
         </button>
         {isRecentlyViewed && (
           <div className="recently-viewed-badge">
